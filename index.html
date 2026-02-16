@@ -1,60 +1,175 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>AI Plant Doctor</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Doctor AI</title>
     <style>
-        body { font-family: sans-serif; background: #f0f4f0; text-align: center; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
-        #preview { width: 100%; border-radius: 10px; margin: 15px 0; display: none; }
-        .btn { background: #2e7d32; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; }
-        #result { margin-top: 20px; font-weight: bold; color: #1b5e20; font-size:15px; }
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            text-align: center;
+            padding: 50px;
+        }
+        .container {
+            background-color: white;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c7a7b;
+        }
+        input[type="file"] {
+            margin: 20px 0;
+        }
+        button {
+            background-color: #319795;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #285e61;
+        }
+        #loading {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #d69e2e;
+            display: none;
+        }
+        #result-container {
+            margin-top: 30px;
+            display: none;
+            text-align: left;
+            background: #f8fafc;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+        }
+        .result-text {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        .ai-vision {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .ai-vision img {
+            border: 2px dashed #cbd5e0;
+            border-radius: 8px;
+            max-width: 224px; /* Matches the AI input size */
+            height: auto;
+        }
+        .error {
+            color: #e53e3e;
+            font-weight: bold;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>🌿 Leaf Doctor</h1>
-    <input type="file" id="fileInput" accept="image/*" onchange="previewImage(event)">
-    <img id="preview">
-    <button class="btn" onclick="sendToAI()">Analyze Leaf</button>
-    <div id="result"></div>
-</div>
-
-<script>
-    // PASTE YOUR RENDER LINK HERE
-    const API_URL = "https://1ndustry-plant-doctor-api.hf.space/predict"; 
-
-    function previewImage(event) {
-        const reader = new FileReader();
-        reader.onload = () => {
-            const img = document.getElementById('preview');
-            img.src = reader.result;
-            img.style.display = 'block';
-        }
-        reader.readAsDataURL(event.target.files[0]);
-    }
-
-    async function sendToAI() {
-        const file = document.getElementById('fileInput').files[0];
-        if (!file) return alert("Select a photo first!");
-
-        document.getElementById('result').innerText = "AI is thinking... 🧠";
+    <div class="container">
+        <h1>Plant Doctor AI</h1>
+        <p>Upload a photo of a leaf to check for diseases.</p>
         
-        const formData = new FormData();
-        formData.append('file', file);
+        <input type="file" id="imageInput" accept="image/*">
+        <br>
+        <button onclick="analyzeLeaf()">Analyze Leaf</button>
 
-        try {
-            const response = await fetch('https://1ndustry-plant-doctor-api.hf.space/predict', { method: 'POST', body: formData });
-            const data = await response.json();
-            document.getElementById('result').innerHTML = `
-                <h2>${data.prediction}</h2>
-                <p>Confidence: ${data.confidence}</p>
-            `;
-        } catch (err) {
-            document.getElementById('result').innerText = "Error: Check if Render API is awake!";
+        <div id="loading">Sending to Hugging Face... please wait.</div>
+        <div id="error-message" class="error"></div>
+
+        <div id="result-container">
+            <div class="result-text">
+                <strong>Diagnosis:</strong> <span id="prediction-text">---</span>
+            </div>
+            <div class="result-text">
+                <strong>Confidence:</strong> <span id="confidence-text">---</span>
+            </div>
+            
+            <div class="ai-vision">
+                <p><strong>What the AI analyzed:</strong><br><small>(Resized to 224x224)</small></p>
+                <img id="processed-image" src="" alt="AI Vision Preview" />
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // *** CRITICAL STEP: REPLACE THIS URL ***
+        // Change this to your actual Hugging Face Space direct API URL.
+        // It usually looks like: https://yourusername-yourspacename.hf.space/predict
+        const API_URL = "https://1ndustry-plant-doctor-api.hf.space/predict";
+
+        function analyzeLeaf() {
+            const fileInput = document.getElementById('imageInput');
+            const file = fileInput.files[0];
+            const loadingText = document.getElementById('loading');
+            const resultContainer = document.getElementById('result-container');
+            const errorMessage = document.getElementById('error-message');
+
+            // Reset UI
+            errorMessage.innerText = "";
+            resultContainer.style.display = 'none';
+
+            if (!file) {
+                errorMessage.innerText = "Please select an image first.";
+                return;
+            }
+
+            // Show loading
+            loadingText.style.display = 'block';
+
+            // Prepare the image file for the API
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Send to Hugging Face API
+            fetch(API_URL, {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("API returned an error: " + response.statusText);
+                }
+                return response.json();
+            })
+            .then(data => {
+                loadingText.style.display = 'none';
+
+                if (data.error) {
+                    errorMessage.innerText = "Error: " + data.error;
+                    return;
+                }
+
+                // Update the text results
+                document.getElementById('prediction-text').innerText = data.prediction.replace(/_/g, ' ');
+                document.getElementById('confidence-text').innerText = data.confidence;
+
+                // Update the AI Vision image using the Base64 string
+                if (data.processed_image) {
+                    document.getElementById('processed-image').src = "data:image/jpeg;base64," + data.processed_image;
+                }
+
+                // Show the results container
+                resultContainer.style.display = 'block';
+            })
+            .catch(error => {
+                loadingText.style.display = 'none';
+                console.error('Error:', error);
+                errorMessage.innerText = "Failed to connect to the API. Check your Hugging Face URL and logs.";
+            });
         }
-    }
-</script>
+    </script>
+
 </body>
 </html>
