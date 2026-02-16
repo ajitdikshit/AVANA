@@ -8,7 +8,7 @@
         .container { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 400px; margin: auto; }
         #preview { width: 100%; border-radius: 10px; margin: 15px 0; display: none; }
         .btn { background: #2e7d32; color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; }
-        #result { margin-top: 20px; font-weight: bold; color: #1b5e20; }
+        #result { margin-top: 20px; font-weight: bold; color: #1b5e20; font-size:15px; }
     </style>
 </head>
 <body>
@@ -49,7 +49,7 @@
             const data = await response.json();
             document.getElementById('result').innerHTML = `
                 <h2>${data.prediction}</h2>
-                <p>Confidence: ${data.confidence}%</p>
+                <p>Confidence: ${data.confidence}</p>
             `;
         } catch (err) {
             document.getElementById('result').innerText = "Error: Check if Render API is awake!";
