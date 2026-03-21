@@ -1,23 +1,20 @@
 {
-  "id": "/AVANA/",
   "name": "AVANA Plant Doctor",
   "short_name": "AVANA",
-  "description": "Cultivating Life, Powered by AI",
   "start_url": "/AVANA/",
   "display": "standalone",
   "background_color": "#f0f4f1",
   "theme_color": "#1e3932",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "/AVANA/icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
       "src": "/AVANA/icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ]
 }
