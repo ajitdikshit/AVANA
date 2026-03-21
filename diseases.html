@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Disease Guide - AVANA</title>
+    <style>
+        
+        /* Modern Reset and Base Styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f1;
+            color: #2d3748;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden; 
+        }
+
+        /* --- Navigation Sidebar Styles --- */
+        .sidebar {
+            height: 100%; width: 250px; position: fixed; z-index: 1000;
+            top: 0; left: -250px; background-color: #1e3932; overflow-x: hidden;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 60px;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.5);
+        }
+        .sidebar.open { left: 0; }
+        .sidebar .close-btn { position: absolute; top: 10px; right: 20px; font-size: 36px; color: #a0aec0; text-decoration: none; cursor: pointer; }
+        .sidebar a.nav-link { padding: 15px 25px; text-decoration: none; font-size: 18px; color: #cbd5e0; display: block; transition: 0.2s; border-left: 4px solid transparent; }
+        .sidebar a.nav-link:hover, .sidebar a.nav-link.active { color: white; background-color: #2b4c44; border-left: 4px solid #48bb78; }
+        .sidebar-title { color: white; padding: 0 25px 20px 25px; font-size: 22px; font-weight: bold; border-bottom: 1px solid #2b4c44; margin-bottom: 10px; }
+
+        /* --- Main Content Area --- */
+        .main-content { transition: margin-left .3s; padding: 15px; width: 100%; max-width: 1000px; margin: 0 auto; }
+
+        /* Header */
+        .header { display: flex; align-items: center; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky; top: 15px; z-index: 100; }
+        .menu-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: #1e3932; margin-right: 15px; padding: 5px; }
+        .header h1 { color: #1e3932; font-size: 22px; }
+
+        /* --- Search & Filters --- */
+        .search-container { margin-bottom: 15px; }
+        .search-input { width: 100%; padding: 15px 20px; border: 2px solid #cbd5e0; border-radius: 12px; font-size: 16px; background-color: white; transition: border-color 0.3s; }
+        .search-input:focus { outline: none; border-color: #d69e2e; /* Warmer color for disease page */ }
+
+        .filter-scroll { display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px; margin-bottom: 15px; scrollbar-width: none; }
+        .filter-scroll::-webkit-scrollbar { display: none; }
+        
+        .filter-pill { background-color: white; border: 1px solid #cbd5e0; color: #4a5568; padding: 8px 16px; border-radius: 20px; font-size: 14px; white-space: nowrap; cursor: pointer; transition: 0.2s; font-weight: bold; }
+        .filter-pill:hover { background-color: #fffff0; border-color: #d69e2e; }
+        .filter-pill.active { background-color: #d69e2e; color: white; border-color: #d69e2e; }
+
+        /* --- Disease Grid --- */
+        .disease-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+        @media(min-width: 600px) { .disease-grid { grid-template-columns: 1fr 1fr; } }
+        @media(min-width: 900px) { .disease-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; } }
+
+        .disease-card { background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.2s; border: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+        .disease-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); border-color: #cbd5e0; }
+        
+        .card-header { padding: 15px; border-bottom: 1px solid #edf2f7; display: flex; align-items: center; gap: 15px; }
+        .icon-circle { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .card-title-area { flex: 1; }
+        .card-title { font-size: 16px; font-weight: bold; color: #2d3748; }
+        .card-type { font-size: 12px; color: #718096; text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold; margin-top: 2px;}
+        
+        .card-body { padding: 15px; font-size: 14px; color: #4a5568; flex: 1; }
+        .symptom-preview { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+        /* --- Modal (Pop-up) Styles --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: flex-end; z-index: 2000; backdrop-filter: blur(3px); }
+        @media(min-width: 600px) { .modal-overlay { align-items: center; } }
+
+        .modal-content { background: white; width: 100%; max-width: 600px; border-radius: 20px 20px 0 0; padding: 25px; position: relative; max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out; }
+        @media(min-width: 600px) { .modal-content { border-radius: 20px; } }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .close-modal { position: absolute; top: 15px; right: 20px; font-size: 28px; color: #a0aec0; cursor: pointer; background: none; border: none; }
+        
+        .modal-header { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #e2e8f0;}
+        .modal-title { font-size: 22px; color: #1a202c; font-weight: bold;}
+        
+        .treatment-box { background: #f0fdf4; border: 1px solid #9ae6b4; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .treatment-title { color: #276749; font-weight: bold; margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 5px;}
+        
+        .warning-box { background: #fff5f5; border: 1px solid #feb2b2; padding: 15px; border-radius: 12px; margin-bottom: 15px; }
+        .warning-title { color: #c53030; font-weight: bold; margin-bottom: 8px; font-size: 16px; display: flex; align-items: center; gap: 5px;}
+        
+        .info-list { margin-left: 20px; font-size: 14px; color: #4a5568; line-height: 1.6; }
+        .info-list li { margin-bottom: 5px; }
+
+        #no-results { text-align: center; padding: 40px; color: #a0aec0; display: none; grid-column: 1 / -1; }
+        /* --- AVANA Loading Screen --- */
+        #avana-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f4f1; /* Matches your app's soothing background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Keeps it on top of everything */
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+
+        .loader-content {
+            text-align: center;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: floatUp 0.6s ease-out forwards;
+        }
+
+        .loader-logo {
+            font-size: 42px;
+            font-weight: 900;
+            color: #1e3932;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .loader-leaf {
+            display: inline-block;
+            animation: pulseLeaf 1.5s infinite ease-in-out;
+        }
+
+        .loader-tagline {
+            font-size: 16px;
+            color: #2c7a7b;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeInText 0.8s ease-out 0.4s forwards; /* Slight delay for effect */
+        }
+
+        /* Animation Keyframes */
+        @keyframes floatUp {
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeInText {
+            to { opacity: 1; }
+        }
+        @keyframes pulseLeaf {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.15) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+<div id="avana-loader">
+        <div class="loader-content">
+            <div class="loader-logo"><span class="loader-leaf">🌿</span> AVANA</div>
+            <div class="loader-tagline">Cultivating Life, Powered by AI</div>
+        </div>
+    </div>
+    <script>
+        // Remove the loading screen smoothly after 1.5 seconds
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('avana-loader');
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+            }, 1500); // 1500 milliseconds = 1.5 seconds
+        });
+    </script>
+    <div id="mySidebar" class="sidebar">
+        <a class="close-btn" onclick="toggleNav()">×</a>
+        <div class="sidebar-title">🌿 Plant Doctor</div>
+        <a href="index.html" class="nav-link">🔍 Diagnose</a>
+        <a href="garden.html" class="nav-link">🪴 My Garden</a>
+        <a href="diseases.html" class="nav-link active">📖 Disease Guide</a>
+        <a href="wiki.html" class="nav-link">📚 Plant Search</a>
+        <a href="community.html" class="nav-link">💬 Community</a>
+    </div>
+
+    <div id="main" class="main-content">
+        <div class="header">
+            <button class="menu-btn" onclick="toggleNav()">☰</button>
+            <h1>🌿AVANA Guide</h1>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search diseases or symptoms (e.g., 'yellow leaves', 'aphids')...">
+        </div>
+
+        <div class="filter-scroll" id="filterContainer">
+            <button class="filter-pill active" data-filter="all">All Issues</button>
+            <button class="filter-pill" data-filter="pest">🐛 Pests</button>
+            <button class="filter-pill" data-filter="fungal">🍄 Fungal</button>
+            <button class="filter-pill" data-filter="bacterial">🦠 Bacterial & Viral</button>
+            <button class="filter-pill" data-filter="environmental">💧 Environmental</button>
+        </div>
+
+        <div class="disease-grid" id="diseaseGrid">
+            </div>
+        <div id="no-results">No diseases found matching your search. 🔍</div>
+    </div>
+
+    <div class="modal-overlay" id="diseaseModal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModal">&times;</button>
+            <div id="modalBody">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleNav() {
+            const sidebar = document.getElementById("mySidebar");
+            sidebar.style.left = sidebar.style.left === "0px" ? "-250px" : "0px";
+        }
+
+        // --- HARDCODED DISEASE DATABASE ---
+        const diseaseDatabase = [
+            {
+                id: "d1", name: "Powdery Mildew", type: "fungal", icon: "🍄", color: "#e9d8fd",
+                symptoms: "White, dusty spots or patches on leaves and stems. Looks like flour has been dusted on the plant.",
+                causes: "High humidity, poor air circulation, and warm days followed by cool nights.",
+                treatment: [
+                    "Remove and destroy heavily infected leaves.",
+                    "Spray with a mixture of 1 tbsp baking soda, 1/2 tsp liquid soap, and 1 gallon water.",
+                    "Apply neem oil or a sulfur-based fungicide."
+                ],
+                prevention: "Improve air circulation around the plant. Avoid overhead watering (keep leaves dry)."
+            },
+            {
+                id: "d2", name: "Root Rot", type: "environmental", icon: "💧", color: "#bee3f8",
+                symptoms: "Yellowing, wilting leaves that drop easily. Mushy, black, or foul-smelling roots.",
+                causes: "Overwatering, poor drainage, or heavy clay soils that drown the roots.",
+                treatment: [
+                    "Stop watering immediately.",
+                    "Remove the plant from its pot. Trim away all black, mushy roots with sterile scissors.",
+                    "Repot in fresh, dry, well-draining soil."
+                ],
+                prevention: "Always use pots with drainage holes. Let the top inch of soil dry out before watering again."
+            },
+            {
+                id: "d3", name: "Aphids", type: "pest", icon: "🐛", color: "#c6f6d5",
+                symptoms: "Clusters of tiny green, black, or yellow bugs on new growth. Sticky 'honeydew' residue on leaves.",
+                causes: "Attracted to soft, nitrogen-rich new growth. Often brought in by ants.",
+                treatment: [
+                    "Blast them off with a strong stream of water from the hose.",
+                    "Spray the plant thoroughly with insecticidal soap or Neem oil.",
+                    "Release ladybugs (a natural predator) into your garden."
+                ],
+                prevention: "Avoid over-fertilizing with nitrogen. Check undersides of leaves frequently."
+            },
+            {
+                id: "d4", name: "Spider Mites", type: "pest", icon: "🕷️", color: "#fed7d7",
+                symptoms: "Tiny yellow or white speckles on leaves (stippling). Fine, silky webbing between stems and leaves.",
+                causes: "Hot, dry, and dusty conditions. They thrive indoors during winter heating.",
+                treatment: [
+                    "Wipe leaves with a damp cloth to physically remove them.",
+                    "Spray with Neem oil or horticultural oil.",
+                    "Increase humidity around the plant (misting or humidifier)."
+                ],
+                prevention: "Keep plants clean and dust-free. Maintain adequate humidity."
+            },
+            {
+                id: "d5", name: "Bacterial Leaf Spot", type: "bacterial", icon: "🦠", color: "#fefcbf",
+                symptoms: "Dark, water-soaked spots on leaves that may turn black or have a yellow halo. Spots may dry and drop out, leaving holes.",
+                causes: "Bacteria splashed onto leaves from the soil, thriving in warm, wet conditions.",
+                treatment: [
+                    "Immediately remove and dispose of infected leaves (do not compost).",
+                    "Apply a copper-based bactericide/fungicide.",
+                    "Isolate the plant to prevent spreading."
+                ],
+                prevention: "Water at the base of the plant. Disinfect your pruning shears between cuts."
+            },
+            {
+                id: "d6", name: "Mealybugs", type: "pest", icon: "🐛", color: "#e2e8f0",
+                symptoms: "White, cottony or fuzzy masses hiding in the joints of stems and under leaves.",
+                causes: "Often brought in on new plants. They thrive in warm environments.",
+                treatment: [
+                    "Dip a cotton swab in rubbing alcohol and dab it directly onto the bugs to kill them.",
+                    "Spray heavily infested plants with insecticidal soap.",
+                    "Quarantine the plant immediately."
+                ],
+                prevention: "Inspect new plants thoroughly before bringing them near your collection."
+            },
+            {
+                id: "d7", name: "Fungus Gnats", type: "pest", icon: "🪰", color: "#ecc94b",
+                symptoms: "Tiny black flies buzzing around the soil surface. Seedlings wilting suddenly.",
+                causes: "Consistently damp, soggy soil that allows larvae to hatch and feed on root hairs.",
+                treatment: [
+                    "Let the top 2 inches of soil dry out completely to kill larvae.",
+                    "Place yellow sticky traps near the soil to catch adults.",
+                    "Water with a mixture of 1 part 3% hydrogen peroxide to 4 parts water."
+                ],
+                prevention: "Do not overwater. Bottom-water your plants so the topsoil remains dry."
+            },
+            {
+                id: "d8", name: "Sunburn", type: "environmental", icon: "☀️", color: "#fbd38d",
+                symptoms: "Bleached, white, or crispy brown patches in the center of leaves facing the light.",
+                causes: "Moving a plant from a dark area straight into direct, harsh sunlight without acclimation.",
+                treatment: [
+                    "Move the plant to a shadier spot immediately.",
+                    "You can trim off the dead brown spots for aesthetics, but the bleached areas will not recover."
+                ],
+                prevention: "Gradually introduce plants to higher light levels over a period of 1-2 weeks."
+            },
+            {
+                id: "d9", name: "Late Blight (Phytophthora)", type: "fungal", icon: "🍂", color: "#e2e8f0",
+                symptoms: "Large, irregular dark green-to-black water-soaked spots on leaves. White fungal growth on the undersides in high humidity. Affects tomatoes and potatoes.",
+                causes: "Prolonged cool, wet, and humid weather. It is a highly destructive oomycete (water mold).",
+                treatment: [
+                    "Remove and destroy all infected plants immediately (do not compost).",
+                    "Apply copper-based fungicides as a preventative measure on remaining healthy plants.",
+                    "Ensure plants are completely dry before nightfall."
+                ],
+                prevention: "Plant resistant varieties. Use drip irrigation instead of overhead sprinklers. Practice crop rotation."
+            },
+            {
+                id: "d10", name: "Early Blight (Alternaria)", type: "fungal", icon: "🎯", color: "#feebc8",
+                symptoms: "Brown or black spots on older leaves with concentric rings (looks like a target or bullseye). Yellowing around the spots.",
+                causes: "Fungus that survives in soil and plant debris. Thrives in warm temperatures with high humidity or heavy dew.",
+                treatment: [
+                    "Prune affected lower leaves to prevent the spores from splashing up.",
+                    "Apply a fungicide containing chlorothalonil or copper.",
+                    "Mulch the base of the plant to prevent soil from splashing onto leaves."
+                ],
+                prevention: "Stake or cage tomato and potato plants to keep foliage off the ground. Water at the base."
+            },
+            {
+                id: "d11", name: "Tomato Yellow Leaf Curl Virus", type: "bacterial", icon: "🧬", color: "#fefcbf",
+                symptoms: "Leaves curl upward and inward, become noticeably yellowed (chlorotic) at the edges, and the plant's growth is severely stunted.",
+                causes: "A virus transmitted exclusively by the Silverleaf Whitefly. Extremely common in hot climates.",
+                treatment: [
+                    "There is no cure for the virus. Infected plants must be uprooted and destroyed.",
+                    "Focus entirely on controlling the whitefly population.",
+                    "Spray Neem oil or insecticidal soap to manage whiteflies on surrounding plants."
+                ],
+                prevention: "Use reflective mulches to repel whiteflies. Plant virus-resistant tomato varieties."
+            },
+            {
+                id: "d12", name: "Rice Leaf Blast", type: "fungal", icon: "🌾", color: "#e9d8fd",
+                symptoms: "Diamond-shaped or spindle-shaped lesions on leaves with gray centers and dark brown borders. Can destroy entire paddy fields.",
+                causes: "The fungus Magnaporthe oryzae. Thrives in periods of frequent rain, high humidity, and excessive nitrogen fertilizer.",
+                treatment: [
+                    "Apply systemic fungicides specifically designed for rice blast.",
+                    "Drain the field temporarily if possible to reduce humidity.",
+                    "Avoid applying heavy doses of urea (nitrogen)."
+                ],
+                prevention: "Use resistant rice varieties. Manage water levels carefully and split nitrogen applications."
+            },
+            {
+                id: "d13", name: "Citrus Canker", type: "bacterial", icon: "🍋", color: "#fefcbf",
+                symptoms: "Raised, corky, crater-like lesions with yellow halos on leaves, stems, and citrus fruits (lemons, oranges).",
+                causes: "The bacterium Xanthomonas citri. Spreads rapidly through wind-driven rain, contaminated tools, and human movement.",
+                treatment: [
+                    "There is no cure. Severely infected branches must be pruned and burned.",
+                    "Spray copper-based bactericides to protect new growth and uninfected trees.",
+                    "Sterilize all pruning tools with alcohol or bleach after use."
+                ],
+                prevention: "Plant disease-free saplings. Use windbreaks around citrus orchards to reduce wind-driven rain."
+            },
+            {
+                id: "d14", name: "Anthracnose", type: "fungal", icon: "🥭", color: "#fbd38d",
+                symptoms: "Dark, sunken lesions on leaves, stems, flowers, and fruits. In mangoes and papayas, it causes black spots that rot the fruit.",
+                causes: "Various Colletotrichum fungi. Highly active during warm, wet, and humid monsoon weather.",
+                treatment: [
+                    "Prune out dead wood and infected leaves to improve air circulation.",
+                    "Apply copper sprays or bio-fungicides during the flowering and early fruit-setting stages.",
+                    "Harvest fruit carefully to avoid bruising, which invites the fungus."
+                ],
+                prevention: "Ensure excellent canopy ventilation. Remove fallen fruit and debris from the orchard floor."
+            },
+            {
+                id: "d15", name: "Common Rust (Maize)", type: "fungal", icon: "🌽", color: "#fed7d7",
+                symptoms: "Small, raised, reddish-brown pustules on both upper and lower surfaces of corn leaves. Pustules eventually burst, releasing powdery spores.",
+                causes: "The fungus Puccinia sorghi. Favored by cool temperatures and high relative humidity (heavy dew).",
+                treatment: [
+                    "Fungicides can be applied if the infection is severe and occurs early in the growing season.",
+                    "Usually, late-season infections do not cause enough economic loss to warrant chemical spraying."
+                ],
+                prevention: "Plant rust-resistant maize hybrids. Plant early to avoid peak late-season humidity."
+            },
+            {
+                id: "d16", name: "Papaya Ringspot Virus", type: "bacterial", icon: "🍈", color: "#c6f6d5",
+                symptoms: "Yellow mottling and distinct dark green rings or C-shaped markings on the fruit. Leaves become severely blistered and distorted.",
+                causes: "A virus transmitted by aphids. One of the most devastating diseases for papaya growers.",
+                treatment: [
+                    "No cure exists. Infected trees must be chopped down and removed immediately to save nearby trees.",
+                    "Control local aphid populations using insecticidal soaps or natural predators."
+                ],
+                prevention: "Avoid planting papayas near cucurbits (pumpkins, gourds) which host the same aphids. Use tolerant varieties."
+            },
+            {
+                id: "d17", name: "Whiteflies", type: "pest", icon: "🪰", color: "#edf2f7",
+                symptoms: "Tiny white moth-like insects that fly up in a cloud when the plant is disturbed. Leaves turn yellow and drop; sticky honeydew is present.",
+                causes: "Overcrowded plants, poor ventilation, and hot weather. They are notorious vectors for transmitting plant viruses.",
+                treatment: [
+                    "Use yellow sticky traps to catch flying adults.",
+                    "Spray the undersides of leaves with Neem oil or insecticidal soap every 3-4 days.",
+                    "Use a handheld vacuum to carefully suck up adults in severe indoor infestations."
+                ],
+                prevention: "Encourage natural predators like lacewings and ladybugs. Keep weeds controlled."
+            },
+            {
+                id: "d18", name: "Septoria Leaf Spot", type: "fungal", icon: "🍁", color: "#e2e8f0",
+                symptoms: "Numerous small, circular spots with dark borders and gray/white centers on older, lower leaves. Black specks (spores) in the center.",
+                causes: "A soil-borne fungus that splashes onto lower leaves during rain or overhead watering.",
+                treatment: [
+                    "Remove heavily infected lower leaves.",
+                    "Apply a fungicide containing chlorothalonil or copper octanoate.",
+                    "Avoid handling the plant when the leaves are wet to prevent spreading spores."
+                ],
+                prevention: "Mulch around the base of the plant to prevent soil splash. Practice 3-year crop rotation."
+            },
+            {
+                id: "d19", name: "Leaf Miner", type: "pest", icon: "🐛", color: "#c6f6d5",
+                symptoms: "Squiggly, white or translucent 'tunnels' or 'trails' etched into the surface of leaves. Common on tomatoes, citrus, and spinach.",
+                causes: "Small flies that lay eggs inside the leaf tissue. The hatching larvae eat their way through the leaf.",
+                treatment: [
+                    "Squeeze the tunnels with your fingers to crush the larvae inside.",
+                    "Prune and destroy heavily mined leaves.",
+                    "Spinosad or Neem oil can be used, but topical sprays are less effective because the pest is inside the leaf."
+                ],
+                prevention: "Use floating row covers over vegetable crops to prevent the adult flies from laying eggs."
+            },
+            {
+                id: "d20", name: "Downy Mildew", type: "fungal", icon: "💧", color: "#bee3f8",
+                symptoms: "Yellow to pale green spots on the upper leaf surface, with fuzzy purplish or grayish mold on the underside of the spots.",
+                causes: "Oomycete pathogens that require cool, highly humid, and wet conditions (often confused with powdery mildew, but prefers cooler, wetter weather).",
+                treatment: [
+                    "Remove and destroy infected foliage.",
+                    "Apply copper-based fungicides or specialized bio-fungicides.",
+                    "Water plants early in the day so foliage dries completely before evening."
+                ],
+                prevention: "Space plants well apart for maximum airflow. Avoid overhead watering."
+            },
+            {
+                id: "d21", name: "Thrips", type: "pest", icon: "🦟", color: "#fed7d7",
+                symptoms: "Leaves look dull, silvery, or stippled. Tiny black specks (feces) on leaves. Flowers may be distorted or fail to open.",
+                causes: "Microscopic, slender insects that puncture plant cells and suck out the contents. They multiply rapidly in hot, dry conditions.",
+                treatment: [
+                    "Hang blue sticky traps (thrips are attracted to blue, unlike whiteflies which like yellow).",
+                    "Spray thoroughly with Spinosad, Neem oil, or insecticidal soap, hitting the undersides of leaves.",
+                    "Prune off heavily infested buds and leaves."
+                ],
+                prevention: "Keep plants well-watered (thrips prefer dry plants). Remove garden debris where they overwinter."
+            },
+            {
+                id: "d22", name: "Black Rot (Grape/Apple)", type: "fungal", icon: "🍇", color: "#e9d8fd",
+                symptoms: "Brown circular lesions on leaves. On fruit (like grapes or apples), it starts as a pale spot that quickly rots, turning the fruit into a hard, black, shriveled 'mummy'.",
+                causes: "The fungus Guignardia bidwellii. Spreads during warm, wet spring weather.",
+                treatment: [
+                    "Prune out and destroy any infected foliage or mummified fruit immediately.",
+                    "Apply protective fungicides starting early in the spring, especially before rainy periods."
+                ],
+                prevention: "Sanitation is critical. Remove all dried, mummified fruits from the plant and the ground during winter dormancy."
+            },
+            {
+                id: "d23", name: "Blossom End Rot", type: "environmental", icon: "🍅", color: "#fbd38d",
+                symptoms: "The bottom (blossom end) of tomatoes, peppers, or squash turns dark brown, leathery, and sunken.",
+                causes: "A calcium deficiency in the fruit, almost always caused by inconsistent watering (fluctuating between too dry and too wet), which prevents roots from absorbing calcium.",
+                treatment: [
+                    "Remove affected fruits so the plant stops wasting energy on them.",
+                    "Establish a highly consistent watering schedule.",
+                    "Apply a liquid calcium foliar spray for a quick fix if soil calcium is truly depleted."
+                ],
+                prevention: "Keep soil moisture consistent using mulch. Avoid excessive nitrogen fertilizers which prompt leafy growth at the expense of fruit."
+            },
+            {
+                id: "d24", name: "Apple Scab", type: "fungal", icon: "🍎", color: "#e9d8fd",
+                symptoms: "Olive-green to black, velvety spots on leaves and fruit. Severely infected apples become distorted, cracked, and drop prematurely.",
+                causes: "The fungus Venturia inaequalis. Thrives in cool, wet spring weather where leaves stay wet for hours.",
+                treatment: [
+                    "Rake up and destroy fallen leaves in autumn, as the fungus overwinters in them.",
+                    "Apply protective fungicides (like captan or sulfur) early in the season before symptoms appear.",
+                    "Prune the tree canopy to allow sunlight and wind to dry the leaves faster."
+                ],
+                prevention: "Plant scab-resistant apple varieties. Maintain strict orchard sanitation."
+            },
+            {
+                id: "d25", name: "Northern Leaf Blight", type: "fungal", icon: "🌽", color: "#fed7d7",
+                symptoms: "Long, elliptical, cigar-shaped grayish-green or tan lesions on corn leaves. Lesions can merge, killing entire leaves.",
+                causes: "The fungus Exserohilum turcicum. Favored by moderate temperatures and heavy dew or frequent rain.",
+                treatment: [
+                    "Foliar fungicides can be applied if the disease appears before the corn tassels.",
+                    "Plough under infected crop residue after harvest to speed up decomposition."
+                ],
+                prevention: "Use resistant maize hybrids. Practice crop rotation with non-host crops."
+            },
+            {
+                id: "d26", name: "Gray Leaf Spot", type: "fungal", icon: "🌽", color: "#e2e8f0",
+                symptoms: "Small, rectangular, tan-to-gray spots on corn leaves that stay strictly between the leaf veins, giving them a blocky appearance.",
+                causes: "The fungus Cercospora zeae-maydis. Highly prevalent in continuous-corn farming with high humidity.",
+                treatment: [
+                    "Apply fungicides at the tasseling stage if lesions are reaching the ear leaf.",
+                    "Deep plowing helps bury the infected residue where the fungus survives."
+                ],
+                prevention: "Crop rotation and planting resistant hybrids are the most effective long-term strategies."
+            },
+            {
+                id: "d27", name: "Esca (Black Measles)", type: "fungal", icon: "🍇", color: "#fbd38d",
+                symptoms: "Grape leaves show 'tiger-stripe' patterns of yellow/red between green veins. Grapes develop small, dark spots (measles) and crack.",
+                causes: "A complex of several wood-rotting fungi entering through pruning wounds in grapevines.",
+                treatment: [
+                    "There is no chemical cure for Esca once it enters the wood.",
+                    "Infected vines must have the diseased wood surgically pruned out (trunk renewal).",
+                    "Severely infected vines must be uprooted and burned."
+                ],
+                prevention: "Apply wound sealants or fungicides immediately after pruning vines to block fungal entry."
+            },
+            {
+                id: "d28", name: "Isariopsis Leaf Spot", type: "fungal", icon: "🍇", color: "#e9d8fd",
+                symptoms: "Irregular brown spots on grape leaves. In severe cases, the leaves dry up and fall off entirely, exposing grapes to sunburn.",
+                causes: "The fungus Pseudocercospora vitis. Spreads rapidly in warm, highly humid, and rainy conditions.",
+                treatment: [
+                    "Apply copper-based fungicides or systemic fungicides at the first sign of spotting.",
+                    "Collect and destroy all fallen leaves at the end of the season."
+                ],
+                prevention: "Ensure excellent canopy management (pruning) to allow airflow through the grapevines."
+            },
+            {
+                id: "d29", name: "Target Spot", type: "fungal", icon: "🍅", color: "#fed7d7",
+                symptoms: "Small brown spots with pale centers on tomato leaves. On fruit, it causes large, sunken, pitted lesions with distinct target-like rings.",
+                causes: "The fungus Corynespora cassiicola. Thrives in highly humid environments and tropical climates.",
+                treatment: [
+                    "Remove heavily infected lower leaves to improve airflow.",
+                    "Apply broad-spectrum fungicides.",
+                    "Avoid overhead irrigation, as splashing water spreads the spores."
+                ],
+                prevention: "Rotate crops and avoid planting tomatoes in the same soil year after year."
+            },
+            {
+                id: "d30", name: "Tomato Mosaic Virus", type: "bacterial", icon: "🍅", color: "#fefcbf",
+                symptoms: "Leaves show a mottled light and dark green mosaic pattern. Leaves may look fern-like or stringy. Fruit may be small or deformed.",
+                causes: "A highly contagious virus. Often transmitted mechanically by human hands, contaminated tools, or even tobacco products.",
+                treatment: [
+                    "There is no cure. Infected plants must be immediately pulled up and destroyed (do not compost).",
+                    "Wash hands thoroughly with soap and water after handling infected plants."
+                ],
+                prevention: "Plant TMV-resistant varieties. Disinfect gardening tools frequently with a bleach solution."
+            },
+            {
+                id: "d31", name: "Leaf Mold", type: "fungal", icon: "🍅", color: "#e2e8f0",
+                symptoms: "Pale green or yellow spots on the upper side of older tomato leaves. The undersides of these spots grow a velvety olive-green mold.",
+                causes: "The fungus Passalora fulva. Occurs almost exclusively in high humidity (greenhouses or dense field canopies).",
+                treatment: [
+                    "Improve ventilation immediately. Trim lower leaves to let air flow through the stems.",
+                    "Apply copper-based fungicides.",
+                    "Lower greenhouse humidity if growing indoors."
+                ],
+                prevention: "Space plants appropriately. Stake and prune tomatoes to keep foliage off the damp ground."
+            },
+            {
+                id: "d32", name: "Citrus Greening (HLB)", type: "bacterial", icon: "🍋", color: "#fefcbf",
+                symptoms: "Asymmetrical yellow mottling on leaves. Fruits remain partially green (hence the name), are misshapen, and taste incredibly bitter.",
+                causes: "A devastating bacterium transmitted by the Asian Citrus Psyllid (a tiny insect).",
+                treatment: [
+                    "There is no cure. This disease is fatal to citrus trees.",
+                    "Infected trees must be removed and destroyed to prevent the psyllids from spreading it to healthy trees.",
+                    "Aggressively treat the orchard for Asian Citrus Psyllids."
+                ],
+                prevention: "Plant certified disease-free trees. Monitor constantly for the psyllid insect vectors."
+            },
+            {
+                id: "d33", name: "Banana Bunchy Top Virus", type: "bacterial", icon: "🍌", color: "#c6f6d5",
+                symptoms: "New leaves are narrow, brittle, with yellow margins, and they 'bunch' together at the top of the plant. The plant will not produce fruit.",
+                causes: "A virus transmitted by the banana aphid. One of the most serious diseases of bananas in India.",
+                treatment: [
+                    "No cure exists. The entire banana mat (mother plant and all suckers) must be destroyed.",
+                    "Kill the aphids on the plant with soapy water or insecticides *before* chopping it down, so they don't flee to healthy plants."
+                ],
+                prevention: "Only use certified virus-free suckers/tissue culture for planting. Control aphid populations."
+            },
+            {
+                id: "d34", name: "Fusarium Wilt", type: "fungal", icon: "🥀", color: "#fbd38d",
+                symptoms: "Leaves turn yellow and wilt, often starting on just one side of the plant. If you cut the stem, the internal vascular tissue is dark brown.",
+                causes: "A stubborn soil-borne fungus that enters through the roots and blocks the plant's water-conducting vessels.",
+                treatment: [
+                    "Infected plants cannot be saved and must be removed.",
+                    "Do not plant susceptible species in that exact spot for at least 3-4 years, as the fungus lives in the soil."
+                ],
+                prevention: "The only effective prevention is planting resistant varieties (look for 'F' on seed packets)."
+            },
+            {
+                id: "d35", name: "Root-Knot Nematodes", type: "pest", icon: "🪱", color: "#fed7d7",
+                symptoms: "Above ground: stunted growth, yellowing, and wilting even when watered. Below ground: roots have large, swollen, tumor-like galls.",
+                causes: "Microscopic roundworms in the soil that infect plant roots, hijacking their nutrients.",
+                treatment: [
+                    "Pull up and destroy heavily infested plants and their roots.",
+                    "Solarize the soil (cover wet soil with clear plastic in the hot summer sun for 6 weeks) to kill nematodes.",
+                    "Plant marigolds thickly in the area, as their roots release a chemical that deters nematodes."
+                ],
+                prevention: "Practice strict crop rotation. Add plenty of organic compost to the soil to encourage beneficial microbes."
+            },
+            {
+                id: "d36", name: "Sooty Mold", type: "fungal", icon: "🖤", color: "#e2e8f0",
+                symptoms: "A black, powdery, ash-like coating on leaves and stems. It looks like charcoal dust and can be wiped off with a finger.",
+                causes: "A fungus that doesn't actually infect the plant! It grows on the sticky 'honeydew' excreted by pests like aphids, whiteflies, or mealybugs.",
+                treatment: [
+                    "Wash the black mold off the leaves with a gentle spray of soapy water.",
+                    "To truly cure it, you must identify and kill the pest (aphids/whiteflies) that is leaving the sticky honeydew behind."
+                ],
+                prevention: "Keep plants free of sap-sucking insects. Ants often farm these insects, so control ant populations as well."
+            },
+            {
+                id: "d37", name: "Cedar Apple Rust", type: "fungal", icon: "🍎", color: "#feebc8",
+                symptoms: "Bright yellow-orange spots on apple leaves and fruit. On nearby cedar trees, it forms weird, orange, gelatinous 'horns' in the rain.",
+                causes: "A complex fungus that requires *two* different host plants to survive: an apple tree and a juniper/cedar tree.",
+                treatment: [
+                    "Apply preventative fungicides to apple trees in the early spring.",
+                    "Remove the orange galls from nearby juniper trees during the winter before they can release spores."
+                ],
+                prevention: "Do not plant apple trees within a few hundred yards of juniper/cedar trees."
+            },
+            {
+                id: "d38", name: "Bacterial Spot (Peppers & Tomatoes)", type: "bacterial", icon: "🫑", color: "#fefcbf",
+                symptoms: "Small, water-soaked, greasy-looking spots on leaves that turn brown. Severe infections cause leaves to yellow and drop. Rough, scabby spots on fruit.",
+                causes: "The bacterium Xanthomonas. Spreads rapidly in warm, rainy weather via splashing water.",
+                treatment: [
+                    "Remove heavily infected leaves.",
+                    "Spray with a copper-based bactericide to slow the spread (it will not cure existing spots).",
+                    "Do not work in the garden when the plants are wet."
+                ],
+                prevention: "Buy certified disease-free seeds. Use drip irrigation to keep the foliage completely dry."
+            },
+            {
+                id: "d39", name: "Strawberry Leaf Scorch", type: "fungal", icon: "🍓", color: "#fed7d7",
+                symptoms: "Irregular dark purple or brown blotches on strawberry leaves. The leaf margins may curl upward and look 'scorched' or burned.",
+                causes: "The fungus Diplocarpon earlianum. Overwinters in dead leaves and spreads via splashing rain.",
+                treatment: [
+                    "Remove and destroy infected leaves.",
+                    "Apply broad-spectrum fungicides if the infection is severe.",
+                    "Renovate strawberry beds after harvest by mowing old foliage."
+                ],
+                prevention: "Plant in full sun with good drainage. Keep weeds down to improve air circulation."
+            },
+            {
+                id: "d40", name: "Mango Malformation", type: "fungal", icon: "🥭", color: "#e9d8fd",
+                symptoms: "Vegetative shoots become thick and bunched up. Flower panicles become dense, heavy, and sterile, failing to produce any mangoes.",
+                causes: "The fungus Fusarium mangiferae, often spread by the mango bud mite.",
+                treatment: [
+                    "Prune the malformed shoots and flowers, cutting at least a foot below the infected area.",
+                    "Burn or deeply bury the pruned material.",
+                    "Spray with an acaricide/miticide to kill the mites spreading the disease."
+                ],
+                prevention: "Disinfect pruning tools. Do not take grafting material from infected orchards."
+            },
+            {
+                id: "d41", name: "Potato Black Scurf", type: "fungal", icon: "🥔", color: "#e2e8f0",
+                symptoms: "Hard, black, dirt-like crusts on the skin of the potato tuber that won't wash off. Stems may have reddish-brown cankers.",
+                causes: "The fungus Rhizoctonia solani. Thrives in cold, wet soils during planting.",
+                treatment: [
+                    "The black crusts on the potato are superficial and can be peeled off before eating; the potato is safe to consume.",
+                    "Do not use infected tubers as seed potatoes for the next crop."
+                ],
+                prevention: "Wait to plant potatoes until the soil has warmed up. Practice crop rotation."
+            },
+            {
+                id: "d42", name: "Verticillium Wilt", type: "fungal", icon: "🥀", color: "#fbd38d",
+                symptoms: "Similar to Fusarium wilt. Lower leaves turn yellow and dry up, often exhibiting a V-shaped yellow lesion at the leaf tip.",
+                causes: "A soil-borne fungus that survives for many years in the soil and attacks a huge range of plants (tomatoes, eggplants, peppers).",
+                treatment: [
+                    "No chemical cure exists for infected plants. Remove and destroy them.",
+                    "Avoid planting susceptible nightshade vegetables in that soil for 3-4 years."
+                ],
+                prevention: "Soil solarization can help reduce fungal spores. Plant resistant varieties (labeled with a 'V')."
+            },
+            {
+                id: "d43", name: "Potato Leaf Roll Virus (PLRV)", type: "bacterial", icon: "🥔", color: "#c6f6d5",
+                symptoms: "Upper potato leaves roll upward, become pale, and feel stiff or leathery. Plants are stunted and produce very small tubers.",
+                causes: "A virus transmitted primarily by the Green Peach Aphid.",
+                treatment: [
+                    "Remove and destroy infected plants immediately.",
+                    "Apply insecticides to aggressively control the aphid population in the field."
+                ],
+                prevention: "Use certified virus-free seed potatoes. Eliminate volunteer potatoes from previous years."
+            }
+        ];
+
+        // --- UI LOGIC ---
+        const grid = document.getElementById('diseaseGrid');
+        const searchInput = document.getElementById('searchInput');
+        const filterPills = document.querySelectorAll('.filter-pill');
+        const noResults = document.getElementById('no-results');
+        const modal = document.getElementById('diseaseModal');
+        const modalBody = document.getElementById('modalBody');
+        const closeModal = document.getElementById('closeModal');
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        function renderCards() {
+            grid.innerHTML = '';
+            
+            const filteredData = diseaseDatabase.filter(disease => {
+                const matchesSearch = disease.name.toLowerCase().includes(searchQuery) || disease.symptoms.toLowerCase().includes(searchQuery);
+                const matchesFilter = currentFilter === 'all' || disease.type === currentFilter || (currentFilter === 'bacterial' && disease.type === 'bacterial');
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filteredData.length === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+                filteredData.forEach(disease => {
+                    const card = document.createElement('div');
+                    card.className = 'disease-card';
+                    card.onclick = () => openModal(disease);
+                    
+                    card.innerHTML = `
+                        <div class="card-header" style="background: linear-gradient(to right, ${disease.color}33, white);">
+                            <div class="icon-circle" style="background-color: ${disease.color}">${disease.icon}</div>
+                            <div class="card-title-area">
+                                <div class="card-title">${disease.name}</div>
+                                <div class="card-type">${disease.type}</div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <strong>Symptoms:</strong>
+                            <div class="symptom-preview">${disease.symptoms}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        // Search & Filter Listeners
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderCards();
+        });
+
+        filterPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                currentFilter = pill.dataset.filter;
+                renderCards();
+            });
+        });
+
+        // Modal Logic
+        function openModal(disease) {
+            let treatmentList = disease.treatment.map(item => `<li>${item}</li>`).join('');
+
+            modalBody.innerHTML = `
+                <div class="modal-header">
+                    <div class="icon-circle" style="background-color: ${disease.color}; width: 60px; height: 60px; font-size: 30px;">${disease.icon}</div>
+                    <div>
+                        <div class="modal-title">${disease.name}</div>
+                        <div style="color: #718096; text-transform: uppercase; font-size: 12px; font-weight: bold; letter-spacing: 1px;">${disease.type} ISSUE</div>
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <div class="warning-title">🔍 How to identify it</div>
+                    <p style="font-size: 14px; color: #4a5568;">${disease.symptoms}</p>
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <strong style="color: #2d3748;">What causes this?</strong>
+                    <p style="font-size: 14px; color: #4a5568; margin-top: 5px;">${disease.causes}</p>
+                </div>
+
+                <div class="treatment-box">
+                    <div class="treatment-title">🩺 Treatment Plan</div>
+                    <ul class="info-list">
+                        ${treatmentList}
+                    </ul>
+                </div>
+                
+                <div>
+                    <strong style="color: #2d3748;">🛡️ Prevention</strong>
+                    <p style="font-size: 14px; color: #4a5568; margin-top: 5px;">${disease.prevention}</p>
+                </div>
+            `;
+            modal.style.display = 'flex';
+        }
+
+        closeModal.onclick = () => modal.style.display = 'none';
+        window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; }
+
+        // Initial Render
+        renderCards();
+    </script>
+</body>
+</html>

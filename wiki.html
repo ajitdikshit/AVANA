@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Plant Search - AVANA</title>
+    <style>
+        
+        /* Modern Reset and Base Styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f1;
+            color: #2d3748;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden; 
+        }
+
+        /* --- Navigation Sidebar Styles --- */
+        .sidebar {
+            height: 100%; width: 250px; position: fixed; z-index: 1000;
+            top: 0; left: -250px; background-color: #1e3932; overflow-x: hidden;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 60px;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.5);
+        }
+        .sidebar.open { left: 0; }
+        .sidebar .close-btn {
+            position: absolute; top: 10px; right: 20px; font-size: 36px;
+            color: #a0aec0; text-decoration: none; cursor: pointer;
+        }
+        .sidebar a.nav-link {
+            padding: 15px 25px; text-decoration: none; font-size: 18px;
+            color: #cbd5e0; display: block; transition: 0.2s; border-left: 4px solid transparent;
+        }
+        .sidebar a.nav-link:hover, .sidebar a.nav-link.active {
+            color: white; background-color: #2b4c44; border-left: 4px solid #48bb78; 
+        }
+        .sidebar-title {
+            color: white; padding: 0 25px 20px 25px; font-size: 22px;
+            font-weight: bold; border-bottom: 1px solid #2b4c44; margin-bottom: 10px;
+        }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            transition: margin-left .3s; padding: 15px; width: 100%;
+            max-width: 1000px; margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex; align-items: center; margin-bottom: 20px;
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky;
+            top: 15px; z-index: 100;
+        }
+        .menu-btn {
+            font-size: 24px; cursor: pointer; background: none; border: none;
+            color: #1e3932; margin-right: 15px; padding: 5px; 
+        }
+        .header h1 { color: #1e3932; font-size: 22px; }
+
+        /* --- Wiki Search & Filters --- */
+        .search-container { margin-bottom: 15px; }
+        .search-input {
+            width: 100%; padding: 15px 20px; border: 2px solid #cbd5e0;
+            border-radius: 12px; font-size: 16px; background-color: white;
+            transition: border-color 0.3s;
+        }
+        .search-input:focus { outline: none; border-color: #48bb78; }
+
+        .filter-scroll {
+            display: flex; overflow-x: auto; gap: 10px; padding-bottom: 10px;
+            margin-bottom: 15px; scrollbar-width: none; /* Hide scrollbar Firefox */
+        }
+        .filter-scroll::-webkit-scrollbar { display: none; /* Hide scrollbar Chrome/Safari */ }
+        
+        .filter-pill {
+            background-color: white; border: 1px solid #cbd5e0; color: #4a5568;
+            padding: 8px 16px; border-radius: 20px; font-size: 14px;
+            white-space: nowrap; cursor: pointer; transition: 0.2s; font-weight: bold;
+        }
+        .filter-pill:hover { background-color: #f0fdf4; border-color: #48bb78; }
+        .filter-pill.active { background-color: #48bb78; color: white; border-color: #48bb78; }
+
+        /* --- Wiki Grid --- */
+        .wiki-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+        }
+        @media(min-width: 768px) {
+            .wiki-grid { grid-template-columns: repeat(3, 1fr); gap: 20px; }
+        }
+        @media(max-width: 400px) {
+            .wiki-grid { grid-template-columns: 1fr; } /* Stack on very tiny phones */
+        }
+
+        .wiki-card {
+            background-color: white; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s; display: flex; flex-direction: column;
+        }
+        .wiki-card:hover { transform: translateY(-3px); box-shadow: 0 6px 15px rgba(0,0,0,0.1); }
+        
+        .card-img {
+            height: 120px; background-color: #e6fffa; display: flex;
+            align-items: center; justify-content: center; font-size: 50px;
+        }
+        .card-content { padding: 15px; flex: 1; display: flex; flex-direction: column; }
+        .card-title { font-size: 16px; font-weight: bold; color: #1e3932; margin-bottom: 4px; }
+        .card-species { font-size: 12px; color: #718096; font-style: italic; margin-bottom: 10px; }
+        .card-badges { display: flex; gap: 5px; margin-top: auto; }
+        .badge { font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #edf2f7; color: #4a5568; }
+
+        /* --- Modal (Pop-up) Styles --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); display: none; justify-content: center;
+            align-items: flex-end; z-index: 2000; backdrop-filter: blur(3px);
+        }
+        @media(min-width: 600px) { .modal-overlay { align-items: center; } }
+
+        .modal-content {
+            background: white; width: 100%; max-width: 500px;
+            border-radius: 20px 20px 0 0; padding: 25px; position: relative;
+            max-height: 90vh; overflow-y: auto; animation: slideUp 0.3s ease-out;
+        }
+        @media(min-width: 600px) { .modal-content { border-radius: 20px; } }
+
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .close-modal {
+            position: absolute; top: 15px; right: 20px; font-size: 28px;
+            color: #a0aec0; cursor: pointer; background: none; border: none;
+        }
+        
+        .modal-header-icon { font-size: 60px; text-align: center; margin-bottom: 10px; }
+        .modal-title { text-align: center; font-size: 24px; color: #1e3932; margin-bottom: 5px; }
+        .modal-species { text-align: center; color: #718096; font-style: italic; margin-bottom: 20px; }
+        
+        .info-section { margin-bottom: 15px; background: #f8fafc; padding: 15px; border-radius: 12px; }
+        .info-title { font-size: 14px; font-weight: bold; color: #2c7a7b; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;}
+        .info-text { font-size: 14px; color: #4a5568; line-height: 1.5; }
+
+        .warning-box { background: #fff5f5; border: 1px solid #feb2b2; color: #c53030; }
+        .warning-title { color: #c53030; }
+
+        .add-garden-btn {
+            background-color: #48bb78; color: white; border: none; width: 100%;
+            padding: 15px; border-radius: 12px; font-size: 16px; font-weight: bold;
+            cursor: pointer; margin-top: 10px; transition: 0.2s;
+        }
+        .add-garden-btn:hover { background-color: #38a169; }
+
+        #no-results { text-align: center; padding: 40px; color: #a0aec0; display: none; grid-column: 1 / -1; }
+/* --- AVANA Loading Screen --- */
+        #avana-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f4f1; /* Matches your app's soothing background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Keeps it on top of everything */
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+
+        .loader-content {
+            text-align: center;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: floatUp 0.6s ease-out forwards;
+        }
+
+        .loader-logo {
+            font-size: 42px;
+            font-weight: 900;
+            color: #1e3932;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .loader-leaf {
+            display: inline-block;
+            animation: pulseLeaf 1.5s infinite ease-in-out;
+        }
+
+        .loader-tagline {
+            font-size: 16px;
+            color: #2c7a7b;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeInText 0.8s ease-out 0.4s forwards; /* Slight delay for effect */
+        }
+
+        /* Animation Keyframes */
+        @keyframes floatUp {
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeInText {
+            to { opacity: 1; }
+        }
+        @keyframes pulseLeaf {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.15) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+<script>
+        // Remove the loading screen smoothly after 1.5 seconds
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('avana-loader');
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+            }, 1500); // 1500 milliseconds = 1.5 seconds
+        });
+    </script>
+    <div id="avana-loader">
+        <div class="loader-content">
+            <div class="loader-logo"><span class="loader-leaf">🌿</span> AVANA</div>
+            <div class="loader-tagline">Cultivating Life, Powered by AI</div>
+        </div>
+    </div>
+    <div id="mySidebar" class="sidebar">
+        <a class="close-btn" onclick="toggleNav()">×</a>
+        <div class="sidebar-title">🌿 Plant Doctor</div>
+        <a href="index.html" class="nav-link">🔍 Diagnose</a>
+        <a href="garden.html" class="nav-link">🪴 My Garden</a>
+        <a href="diseases.html" class="nav-link">📖 Disease Guide</a>
+        <a href="wiki.html" class="nav-link active">📚 Plant Search</a>
+        <a href="community.html" class="nav-link">💬 Community</a>
+    </div>
+
+    <div id="main" class="main-content">
+        <div class="header">
+            <button class="menu-btn" onclick="toggleNav()">☰</button>
+            <h1>🌿AVANA Encyclopedia</h1>
+        </div>
+
+        <div class="search-container">
+            <input type="text" id="searchInput" class="search-input" placeholder="Search plants (e.g., Pothos, Snake Plant)...">
+        </div>
+
+        <div class="filter-scroll" id="filterContainer">
+            <button class="filter-pill active" data-filter="all">All Plants</button>
+            <button class="filter-pill" data-filter="beginner">🔰 Beginner Friendly</button>
+            <button class="filter-pill" data-filter="low-light">🌑 Low Light</button>
+            <button class="filter-pill" data-filter="pet-safe">🐾 Pet Safe</button>
+        </div>
+
+        <div class="wiki-grid" id="wikiGrid">
+            </div>
+        <div id="no-results">No plants found matching your criteria. 🌵</div>
+    </div>
+
+    <div class="modal-overlay" id="plantModal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModal">&times;</button>
+            <div id="modalBody">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleNav() {
+            const sidebar = document.getElementById("mySidebar");
+            sidebar.style.left = sidebar.style.left === "0px" ? "-250px" : "0px";
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // Initialize Firebase (Using your specific project!)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDiRJsLgqIs_YHpNjbgq1PZ6Oes1_A-uqM",
+            authDomain: "plantcommunity-60a9a.firebaseapp.com",
+            databaseURL: "https://plantcommunity-60a9a-default-rtdb.firebaseio.com", 
+            projectId: "plantcommunity-60a9a",
+            storageBucket: "plantcommunity-60a9a.firebasestorage.app",
+            messagingSenderId: "1094686459183",
+            appId: "1:1094686459183:web:0d5f459afbd62ff5e4cdda"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // --- HARDCODED WIKI DATABASE ---
+        // (In a massive app, you would fetch this array from Firestore instead!)
+        const plantDatabase = [
+            {
+                id: "p1", name: "Monstera Deliciosa", species: "Monstera deliciosa", icon: "🌿", color: "#e6fffa",
+                tags: ["beginner"], waterFreq: 14,
+                light: "Bright, indirect sunlight. Can tolerate lower light, but leaves won't split as much.",
+                water: "Water every 1-2 weeks, allowing soil to dry out between waterings. Increase in brighter light.",
+                toxic: true, toxicityInfo: "Toxic to cats and dogs if ingested. Causes mouth irritation."
+            },
+            {
+                id: "p2", name: "Snake Plant", species: "Sansevieria trifasciata", icon: "🐍", color: "#f0fff4",
+                tags: ["beginner", "low-light"], waterFreq: 21,
+                light: "Extremely adaptable. Prefers bright indirect light but thrives in low light and dark corners.",
+                water: "Water every 2-3 weeks. Allow soil to completely dry out. Highly drought-tolerant.",
+                toxic: true, toxicityInfo: "Mildly toxic to pets. Can cause nausea and vomiting."
+            },
+            {
+                id: "p3", name: "Golden Pothos", species: "Epipremnum aureum", icon: "🍃", color: "#fffff0",
+                tags: ["beginner", "low-light"], waterFreq: 10,
+                light: "Prefers medium to bright indirect light, but tolerates low light extremely well.",
+                water: "Water every 1-2 weeks. Leaves will start to droop dramatically when it needs water.",
+                toxic: true, toxicityInfo: "Toxic to pets. Keep vines out of reach."
+            },
+            {
+                id: "p4", name: "Spider Plant", species: "Chlorophytum comosum", icon: "🕷️", color: "#f8f9fa",
+                tags: ["beginner", "pet-safe"], waterFreq: 7,
+                light: "Bright, indirect light is best. Avoid direct sun which can scorch the leaves.",
+                water: "Water about once a week. Keep soil slightly moist but never soggy.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p5", name: "ZZ Plant", species: "Zamioculcas zamiifolia", icon: "🌱", color: "#ebf8ff",
+                tags: ["beginner", "low-light"], waterFreq: 30,
+                light: "Thrives in medium to low indirect light. Can survive in windowless rooms with fluorescent lights.",
+                water: "Water once a month. The thick rhizomes store water, making it almost indestructible.",
+                toxic: true, toxicityInfo: "All parts of the plant are toxic. Keep away from pets and children."
+            },
+            {
+                id: "p6", name: "Boston Fern", species: "Nephrolepis exaltata", icon: "🪴", color: "#fdf2f8",
+                tags: ["pet-safe"], waterFreq: 3,
+                light: "Bright, indirect light. Loves humidity, making it perfect for bathrooms.",
+                water: "Requires constant moisture. Water every few days to keep soil damp. Mist frequently.",
+                toxic: false, toxicityInfo: "Safe and non-toxic for all pets."
+            },
+            // ... (Your existing 6 plants are above here) ...
+
+            {
+                id: "p7", name: "Peace Lily", species: "Spathiphyllum", icon: "🕊️", color: "#fdf2f8",
+                tags: ["low-light"], waterFreq: 7,
+                light: "Prefers medium to low indirect light. Will survive in office fluorescent lighting.",
+                water: "Water about once a week. The plant will dramatically droop when it's thirsty, but bounces right back.",
+                toxic: true, toxicityInfo: "Toxic to cats and dogs. Can cause severe irritation of the mouth and stomach."
+            },
+            {
+                id: "p8", name: "Aloe Vera", species: "Aloe barbadensis miller", icon: "🌵", color: "#f0fff4",
+                tags: ["beginner"], waterFreq: 21,
+                light: "Loves bright, direct sunlight. Place it on a sunny windowsill.",
+                water: "Water deeply, but infrequently. Let the soil dry out completely (about every 3 weeks).",
+                toxic: true, toxicityInfo: "Mildly toxic to pets. The gel is safe, but the outer skin can cause lethargy and diarrhea."
+            },
+            {
+                id: "p9", name: "Fiddle Leaf Fig", species: "Ficus lyrata", icon: "🌳", color: "#e6fffa",
+                tags: [], waterFreq: 10,
+                light: "Requires bright, consistent indirect light. Very sensitive to being moved.",
+                water: "Water when the top 2 inches of soil are dry. Too much water will cause brown spots on leaves.",
+                toxic: true, toxicityInfo: "Toxic to pets. Ingestion causes oral irritation and vomiting."
+            },
+            {
+                id: "p10", name: "Cast Iron Plant", species: "Aspidistra elatior", icon: "🛡️", color: "#f8f9fa",
+                tags: ["beginner", "low-light", "pet-safe"], waterFreq: 14,
+                light: "Thrives in low light and deep shade. Avoid direct sunlight which will burn leaves.",
+                water: "Very forgiving. Water every 2 weeks, allowing soil to dry out halfway.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p11", name: "Rubber Plant", species: "Ficus elastica", icon: "🩸", color: "#fffff0",
+                tags: ["beginner"], waterFreq: 10,
+                light: "Prefers bright, indirect light but can tolerate a few hours of morning sun.",
+                water: "Water every 1-2 weeks. Wipe the large leaves with a damp cloth to keep them shiny.",
+                toxic: true, toxicityInfo: "Toxic to pets. The milky sap can cause stomach and skin irritation."
+            },
+            {
+                id: "p12", name: "Jade Plant", species: "Crassula ovata", icon: "💎", color: "#ebf8ff",
+                tags: ["beginner"], waterFreq: 21,
+                light: "Needs plenty of bright, indirect light. A few hours of direct sun is great.",
+                water: "It's a succulent, so water sparsely. Wait until the soil is completely dry before soaking.",
+                toxic: true, toxicityInfo: "Highly toxic to pets, especially dogs. Can cause depression and incoordination."
+            },
+            {
+                id: "p13", name: "Parlor Palm", species: "Chamaedorea elegans", icon: "🌴", color: "#e6fffa",
+                tags: ["low-light", "pet-safe"], waterFreq: 7,
+                light: "Excellent for low-light situations. Keep away from bright, direct windows.",
+                water: "Keep soil lightly moist but never soggy. Water when the top inch of soil feels dry.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p14", name: "Chinese Money Plant", species: "Pilea peperomioides", icon: "🪙", color: "#f0fff4",
+                tags: ["beginner", "pet-safe"], waterFreq: 7,
+                light: "Bright, indirect light. Rotate the pot weekly so it doesn't grow lopsided reaching for the sun.",
+                water: "Water once a week. The leaves will start to look slightly droopy when thirsty.",
+                toxic: false, toxicityInfo: "Safe and non-toxic for all pets."
+            },
+            {
+                id: "p15", name: "Calathea Orbifolia", species: "Goeppertia orbifolia", icon: "🦓", color: "#f8f9fa",
+                tags: ["pet-safe"], waterFreq: 5,
+                light: "Medium to bright indirect light. Direct sun will bleach and burn the delicate patterns.",
+                water: "Needs consistently moist soil and high humidity. Use filtered water to prevent brown leaf tips.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p16", name: "English Ivy", species: "Hedera helix", icon: "🌿", color: "#fffff0",
+                tags: ["low-light"], waterFreq: 7,
+                light: "Does well in medium to low light. Great for hanging baskets away from direct sun.",
+                water: "Likes to be kept on the drier side. Water when the top inch of soil dries out.",
+                toxic: true, toxicityInfo: "Toxic to pets and humans. Causes severe vomiting and abdominal pain."
+            },
+            {
+                id: "p17", name: "Heartleaf Philodendron", species: "Philodendron hederaceum", icon: "💚", color: "#ebf8ff",
+                tags: ["beginner", "low-light"], waterFreq: 10,
+                light: "Very adaptable. Will tolerate low light but grows faster in medium/bright indirect light.",
+                water: "Water every 1-2 weeks. Let the top half of the soil dry out before watering again.",
+                toxic: true, toxicityInfo: "Toxic to pets. Contains calcium oxalates which irritate the mouth."
+            },
+            {
+                id: "p18", name: "Ponytail Palm", species: "Beaucarnea recurvata", icon: "🪴", color: "#fdf2f8",
+                tags: ["beginner", "pet-safe"], waterFreq: 21,
+                light: "Loves bright light. Can handle full, direct sun like a cactus.",
+                water: "The thick trunk stores water. Water thoroughly, then ignore it for 3-4 weeks.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p19", name: "String of Pearls", species: "Senecio rowleyanus", icon: "📿", color: "#e6fffa",
+                tags: [], waterFreq: 14,
+                light: "Needs bright, indirect light. A little bit of morning sun is beneficial.",
+                water: "Very susceptible to root rot. Wait until the 'pearls' start to look slightly shriveled before watering.",
+                toxic: true, toxicityInfo: "Toxic to pets. Ingestion can cause drooling, vomiting, and lethargy."
+            },
+            {
+                id: "p20", name: "Zebra Haworthia", species: "Haworthiopsis fasciata", icon: "🌵", color: "#f0fff4",
+                tags: ["beginner", "pet-safe"], waterFreq: 21,
+                light: "Bright, indirect light. Will turn red/purple if it gets too much direct sun.",
+                water: "Water sparingly like a cactus. Only water when the soil is 100% dry.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p21", name: "Bird of Paradise", species: "Strelitzia nicolai", icon: "🪶", color: "#f8f9fa",
+                tags: [], waterFreq: 7,
+                light: "Needs maximum light. Place right next to your brightest window, ideally with some direct sun.",
+                water: "Water when the top 2-3 inches of soil dry out. Needs more water in summer, less in winter.",
+                toxic: true, toxicityInfo: "Toxic to pets. Flowers and seeds are the most poisonous parts."
+            },
+            {
+                id: "p72", name: "Rice (Paddy / Dhan)", species: "Oryza sativa", icon: "🌾", color: "#e6fffa",
+                tags: ["beginner"], waterFreq: 1,
+                light: "Requires full, direct sunlight for the entire day.",
+                water: "A highly water-intensive crop. Traditionally grown in flooded fields (paddies) with standing water.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for humans and pets."
+            },
+            {
+                id: "p73", name: "Wheat (Gehun)", species: "Triticum aestivum", icon: "🌾", color: "#fffff0",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Needs full sun. Grown primarily as a winter (Rabi) crop in India.",
+                water: "Requires moderate watering. Typically watered at crucial growth stages like crown root initiation.",
+                toxic: false, toxicityInfo: "Safe for pets and humans, though some animals may have gluten allergies."
+            },
+            {
+                id: "p74", name: "Maize (Makka)", species: "Zea mays", icon: "🌽", color: "#f0fff4",
+                tags: ["beginner", "pet-safe"], waterFreq: 5,
+                light: "Thrives in full sunlight and warm temperatures.",
+                water: "Needs consistent moisture, especially during the silking and tasseling stages.",
+                toxic: false, toxicityInfo: "Safe and non-toxic. Highly nutritious for humans and livestock."
+            },
+            {
+                id: "p75", name: "Sorghum (Jowar)", species: "Sorghum bicolor", icon: "🌾", color: "#f8f9fa",
+                tags: ["beginner"], waterFreq: 10,
+                light: "Loves intense heat and full, direct sunlight.",
+                water: "Highly drought-tolerant. Needs much less water than wheat or maize.",
+                toxic: true, toxicityInfo: "Young plants/shoots can contain prussic acid, which is toxic to grazing livestock."
+            },
+            {
+                id: "p76", name: "Pearl Millet (Bajra)", species: "Pennisetum glaucum", icon: "🌾", color: "#ebf8ff",
+                tags: ["beginner", "pet-safe"], waterFreq: 14,
+                light: "Thrives in hot, dry climates with full sun.",
+                water: "Extremely drought-resistant. Perfect for arid regions with low rainfall.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic."
+            },
+            {
+                id: "p77", name: "Finger Millet (Ragi)", species: "Eleusine coracana", icon: "🌾", color: "#fdf2f8",
+                tags: ["pet-safe"], waterFreq: 10,
+                light: "Requires full sunlight and warm weather.",
+                water: "Drought-tolerant but yields better with occasional deep watering.",
+                toxic: false, toxicityInfo: "Highly nutritious and perfectly safe for consumption."
+            },
+            {
+                id: "p78", name: "Barley (Jau)", species: "Hordeum vulgare", icon: "🌾", color: "#fffff0",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Grows best in full sun during cooler winter months.",
+                water: "Requires moderate watering. Cannot tolerate waterlogging.",
+                toxic: false, toxicityInfo: "Safe for pets. Often grown as cat grass for felines to chew on."
+            },
+            {
+                id: "p79", name: "Chickpea (Chana)", species: "Cicer arietinum", icon: "🌱", color: "#e6fffa",
+                tags: ["beginner", "pet-safe"], waterFreq: 10,
+                light: "Needs full sun. Primarily a winter crop in India.",
+                water: "Requires very little water. Overwatering causes the roots to rot quickly.",
+                toxic: false, toxicityInfo: "Safe and highly nutritious."
+            },
+            {
+                id: "p80", name: "Pigeon Pea (Toor Dal)", species: "Cajanus cajan", icon: "🌿", color: "#f0fff4",
+                tags: ["pet-safe"], waterFreq: 14,
+                light: "Needs full sunlight and warm temperatures.",
+                water: "Deep taproot makes it highly drought-resistant. Water sparingly once established.",
+                toxic: false, toxicityInfo: "Completely safe and a major protein source."
+            },
+            {
+                id: "p81", name: "Mung Bean (Moong)", species: "Vigna radiata", icon: "🌱", color: "#f8f9fa",
+                tags: ["beginner", "pet-safe"], waterFreq: 7,
+                light: "Thrives in full, direct sun.",
+                water: "Needs moderate watering. Sensitive to both drought and waterlogging.",
+                toxic: false, toxicityInfo: "Safe. Sprouts are highly nutritious for humans and birds."
+            },
+            {
+                id: "p82", name: "Black Gram (Urad Dal)", species: "Vigna mungo", icon: "🌱", color: "#ebf8ff",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Prefers full sun and a hot climate.",
+                water: "Requires evenly moist soil but must be well-drained.",
+                toxic: false, toxicityInfo: "Safe and non-toxic."
+            },
+            {
+                id: "p83", name: "Lentil (Masoor)", species: "Lens culinaris", icon: "🌱", color: "#fdf2f8",
+                tags: ["pet-safe"], waterFreq: 10,
+                light: "Grows well in full sun during cooler weather.",
+                water: "Drought-tolerant. Does not perform well in overly wet soil.",
+                toxic: false, toxicityInfo: "Safe for humans and pets."
+            },
+            {
+                id: "p84", name: "Soybean (Bhat)", species: "Glycine max", icon: "🫘", color: "#e6fffa",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Requires full sunlight for optimal pod development.",
+                water: "Needs consistent moisture, especially during the flowering and pod-filling stages.",
+                toxic: false, toxicityInfo: "Raw beans contain anti-nutritional factors, but cooked plants are safe."
+            },
+            {
+                id: "p85", name: "Kidney Bean (Rajma)", species: "Phaseolus vulgaris", icon: "🫘", color: "#fffff0",
+                tags: [], waterFreq: 5,
+                light: "Prefers full sun but can tolerate light shade.",
+                water: "Requires regular watering. Do not let the soil dry out completely.",
+                toxic: true, toxicityInfo: "Raw or undercooked kidney beans are highly toxic to humans and pets due to Phytohaemagglutinin."
+            },
+            {
+                id: "p86", name: "Peanut / Groundnut (Mungfali)", species: "Arachis hypogaea", icon: "🥜", color: "#f0fff4",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Needs full sun. Requires loose, sandy soil so the 'pegs' can penetrate the ground.",
+                water: "Water regularly until flowers form, then reduce watering to prevent pod rot.",
+                toxic: false, toxicityInfo: "Safe, though peanut allergies are common in humans."
+            },
+            {
+                id: "p87", name: "Mustard (Sarson)", species: "Brassica nigra", icon: "🌼", color: "#f8f9fa",
+                tags: ["beginner"], waterFreq: 7,
+                light: "Thrives in full sun. Famous for bright yellow fields in Indian winters.",
+                water: "Requires light, frequent watering during the vegetative stage.",
+                toxic: true, toxicityInfo: "Seeds and mature leaves can cause gastric irritation in pets if ingested in large quantities."
+            },
+            {
+                id: "p88", name: "Sunflower (Surajmukhi)", species: "Helianthus annuus", icon: "🌻", color: "#ebf8ff",
+                tags: ["beginner", "pet-safe"], waterFreq: 5,
+                light: "Requires a minimum of 6-8 hours of direct, blazing sun per day.",
+                water: "Deep roots make it somewhat drought tolerant, but it needs regular water during blooming.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p89", name: "Sesame (Til)", species: "Sesamum indicum", icon: "🌱", color: "#fdf2f8",
+                tags: ["pet-safe"], waterFreq: 10,
+                light: "Loves heat and full, direct sunlight.",
+                water: "Highly drought-tolerant. Overwatering or poor drainage will quickly kill it.",
+                toxic: false, toxicityInfo: "Safe for humans and pets."
+            },
+            {
+                id: "p90", name: "Sugarcane (Ganna)", species: "Saccharum officinarum", icon: "🎋", color: "#e6fffa",
+                tags: ["pet-safe"], waterFreq: 3,
+                light: "Requires full, intense tropical sunlight.",
+                water: "Extremely thirsty crop. Needs constant, heavy watering and high humidity.",
+                toxic: false, toxicityInfo: "Safe for pets. The thick stalks are non-toxic."
+            },
+            {
+                id: "p91", name: "Cotton (Kapas)", species: "Gossypium", icon: "☁️", color: "#fffff0",
+                tags: [], waterFreq: 7,
+                light: "Requires full sun and a long, frost-free growing season.",
+                water: "Needs deep watering during growth, but must be kept dry during the harvest period.",
+                toxic: true, toxicityInfo: "Seeds and unrefined cottonseed oil contain gossypol, which is highly toxic to pets and livestock."
+            },
+            {
+                id: "p92", name: "Jute (Patsan)", species: "Corchorus", icon: "🌿", color: "#f0fff4",
+                tags: [], waterFreq: 3,
+                light: "Requires full sun and a hot, humid climate (common in West Bengal).",
+                water: "Requires standing water or extremely moist soil. Thrives in monsoon floods.",
+                toxic: false, toxicityInfo: "Generally safe, though leaves can be slightly bitter."
+            },
+            {
+                id: "p93", name: "Tea (Chai)", species: "Camellia sinensis", icon: "🍃", color: "#f8f9fa",
+                tags: [], waterFreq: 3,
+                light: "Prefers partial shade or filtered sunlight. Usually grown on misty hillsides.",
+                water: "Requires frequent, heavy rainfall but absolutely must have well-draining soil.",
+                toxic: true, toxicityInfo: "Contains caffeine, which is highly toxic to cats and dogs."
+            },
+            {
+                id: "p94", name: "Coffee (Kaafi)", species: "Coffea arabica", icon: "☕", color: "#ebf8ff",
+                tags: [], waterFreq: 5,
+                light: "Thrives in dappled sunlight or partial shade. Direct harsh sun burns the leaves.",
+                water: "Keep soil consistently moist but never waterlogged.",
+                toxic: true, toxicityInfo: "Contains caffeine. Highly toxic to pets; ingestion can be fatal."
+            },
+            {
+                id: "p95", name: "Black Pepper (Kaali Mirch)", species: "Piper nigrum", icon: "🌿", color: "#fdf2f8",
+                tags: [], waterFreq: 3,
+                light: "A climbing vine that prefers partial shade and indirect light.",
+                water: "Requires consistently moist soil and very high humidity.",
+                toxic: true, toxicityInfo: "Mildly toxic to pets. Can cause severe stomach upset and respiratory irritation if inhaled."
+            },
+            {
+                id: "p96", name: "Red Chilli (Laal Mirch)", species: "Capsicum annuum", icon: "🌶️", color: "#e6fffa",
+                tags: ["beginner"], waterFreq: 3,
+                light: "Needs full, direct sunlight for at least 6-8 hours a day.",
+                water: "Water when the top inch of soil is dry. Consistent watering prevents blossom end rot.",
+                toxic: true, toxicityInfo: "Toxic to pets. Capsaicin causes intense burning in the mouth and gastrointestinal tract."
+            },
+            {
+                id: "p97", name: "Garlic (Lehsun)", species: "Allium sativum", icon: "🧄", color: "#fffff0",
+                tags: ["beginner"], waterFreq: 5,
+                light: "Requires full sun for the bulbs to develop properly.",
+                water: "Keep soil moist during early growth, but stop watering a few weeks before harvest to cure bulbs.",
+                toxic: true, toxicityInfo: "Highly toxic to dogs and cats. Damages red blood cells leading to anemia."
+            },
+            {
+                id: "p98", name: "Onion (Pyaaz)", species: "Allium cepa", icon: "🧅", color: "#f0fff4",
+                tags: ["beginner"], waterFreq: 5,
+                light: "Needs full sun. Bulb formation is triggered by day length.",
+                water: "Requires steady moisture. Shallow roots mean it dries out quickly.",
+                toxic: true, toxicityInfo: "Highly toxic to cats and dogs. Causes hemolytic anemia."
+            },
+            {
+                id: "p99", name: "Potato (Aloo)", species: "Solanum tuberosum", icon: "🥔", color: "#f8f9fa",
+                tags: ["beginner"], waterFreq: 5,
+                light: "Prefers full sun. Tubers must be kept covered with soil to avoid turning green.",
+                water: "Keep soil evenly moist. Uneven watering causes knobby or split potatoes.",
+                toxic: true, toxicityInfo: "The leaves, stems, and green potatoes contain solanine, which is toxic to pets and humans."
+            },
+            {
+                id: "p100", name: "Tomato (Tamatar)", species: "Solanum lycopersicum", icon: "🍅", color: "#ebf8ff",
+                tags: ["beginner"], waterFreq: 2,
+                light: "Requires 6-8 hours of direct sunlight. Thrives in heat.",
+                water: "Water deeply and regularly at the base. Avoid getting the leaves wet to prevent blight.",
+                toxic: true, toxicityInfo: "The ripe fruit is safe, but the leaves and stems are toxic to pets."
+            },
+            {
+                id: "p101", name: "Eggplant (Brinjal / Baingan)", species: "Solanum melongena", icon: "🍆", color: "#fdf2f8",
+                tags: [], waterFreq: 3,
+                light: "Loves intense heat and full, direct sun.",
+                water: "Requires consistent moisture to produce large, healthy fruits.",
+                toxic: true, toxicityInfo: "The plant's foliage contains solanine and is toxic to pets if eaten."
+            },
+            {
+                id: "p102", name: "Okra (Bhindi)", species: "Abelmoschus esculentus", icon: "🌱", color: "#e6fffa",
+                tags: ["beginner", "pet-safe"], waterFreq: 3,
+                light: "Thrives in blazing hot, full sun.",
+                water: "Water deeply at least once a week. Fairly drought-tolerant once established.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p103", name: "Bitter Gourd (Karela)", species: "Momordica charantia", icon: "🥒", color: "#fffff0",
+                tags: [], waterFreq: 3,
+                light: "A climbing vine that needs full sun and a strong trellis.",
+                water: "Keep the soil consistently moist for good fruit production.",
+                toxic: true, toxicityInfo: "Seeds and rind contain toxins that can cause severe stomach upset in pets."
+            },
+            {
+                id: "p104", name: "Bottle Gourd (Lauki)", species: "Lagenaria siceraria", icon: "🥒", color: "#f0fff4",
+                tags: ["pet-safe"], waterFreq: 2,
+                light: "Requires full sunlight and plenty of space to vine.",
+                water: "Very thirsty plant. Needs heavy, regular watering during the fruiting stage.",
+                toxic: false, toxicityInfo: "Generally safe, though bitter-tasting gourds should be avoided by humans and pets."
+            },
+            {
+                id: "p105", name: "Cabbage (Patta Gobhi)", species: "Brassica oleracea var. capitata", icon: "🥬", color: "#f8f9fa",
+                tags: ["pet-safe"], waterFreq: 3,
+                light: "Prefers full sun, but grows best in cooler winter weather.",
+                water: "Requires consistent, even moisture to prevent the heads from splitting.",
+                toxic: false, toxicityInfo: "Safe, but large amounts can cause gas or thyroid issues in pets."
+            },
+            {
+                id: "p106", name: "Cauliflower (Phool Gobhi)", species: "Brassica oleracea var. botrytis", icon: "🥦", color: "#ebf8ff",
+                tags: ["pet-safe"], waterFreq: 3,
+                light: "Requires full sun. The inner leaves must cover the head to keep it white (blanching).",
+                water: "Needs uninterrupted moisture. Drought will cause the head to separate and bolt.",
+                toxic: false, toxicityInfo: "Safe and non-toxic."
+            },
+            {
+                id: "p107", name: "Spinach (Palak)", species: "Spinacia oleracea", icon: "🍃", color: "#fdf2f8",
+                tags: ["beginner", "pet-safe"], waterFreq: 2,
+                light: "Prefers partial shade or full sun in cool weather. Bolts quickly in heat.",
+                water: "Keep the soil consistently moist for tender leaves.",
+                toxic: false, toxicityInfo: "Safe for pets in moderation (high in oxalates)."
+            },
+            {
+                id: "p108", name: "Mango (Aam)", species: "Mangifera indica", icon: "🥭", color: "#e6fffa",
+                tags: [], waterFreq: 7,
+                light: "Requires full tropical sun and plenty of space to grow into a massive tree.",
+                water: "Water young trees regularly. Mature trees have deep taproots and are drought-resistant.",
+                toxic: true, toxicityInfo: "The fruit is safe, but the skin, sap, and leaves contain urushiol (similar to poison ivy), which is toxic."
+            },
+            {
+                id: "p109", name: "Banana (Kela)", species: "Musa", icon: "🍌", color: "#fffff0",
+                tags: ["pet-safe"], waterFreq: 3,
+                light: "Loves heat and full, direct sunlight.",
+                water: "Extremely thirsty. Requires heavy, regular watering and consistently moist soil.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for cats and dogs."
+            },
+            {
+                id: "p110", name: "Papaya (Papeeta)", species: "Carica papaya", icon: "🍈", color: "#f0fff4",
+                tags: [], waterFreq: 5,
+                light: "Requires full sun and warm weather. Highly frost-sensitive.",
+                water: "Needs regular watering but is incredibly susceptible to root rot if waterlogged.",
+                toxic: true, toxicityInfo: "The ripe fruit is safe, but the leaves, seeds, and unripe fruit contain an enzyme that can irritate pet stomachs."
+            },
+            {
+                id: "p111", name: "Guava (Amrood)", species: "Psidium guajava", icon: "🍐", color: "#f8f9fa",
+                tags: ["pet-safe"], waterFreq: 7,
+                light: "Needs full sun for at least 6-8 hours to produce sweet fruit.",
+                water: "Water deeply and regularly during flowering and fruiting. Drought tolerant otherwise.",
+                toxic: false, toxicityInfo: "The fruit and leaves are safe and non-toxic."
+            },
+            {
+                id: "p112", name: "Pomegranate (Anaar)", species: "Punica granatum", icon: "🍎", color: "#ebf8ff",
+                tags: ["pet-safe"], waterFreq: 10,
+                light: "Thrives in full sun and loves dry, intense heat.",
+                water: "Drought-tolerant. Water deeply every week or two during summer.",
+                toxic: false, toxicityInfo: "Safe, though eating too many seeds can cause stomach upset in pets."
+            },
+            {
+                id: "p113", name: "Lemon (Nimbu)", species: "Citrus limon", icon: "🍋", color: "#fdf2f8",
+                tags: [], waterFreq: 5,
+                light: "Needs full sun (8+ hours daily) for good fruit production.",
+                water: "Water deeply, then allow the top few inches of soil to dry out.",
+                toxic: true, toxicityInfo: "Toxic to cats and dogs. The essential oils and psoralens can cause vomiting and lethargy."
+            },
+            {
+                id: "p114", name: "Grapes (Angoor)", species: "Vitis vinifera", icon: "🍇", color: "#e6fffa",
+                tags: [], waterFreq: 5,
+                light: "Requires full sun and a sturdy trellis system for the vines to climb.",
+                water: "Needs deep, regular watering, especially during the fruit-setting stage.",
+                toxic: true, toxicityInfo: "Highly toxic to dogs. Grapes and raisins can cause sudden kidney failure."
+            },
+            {
+                id: "p115", name: "Saffron (Kesar)", species: "Crocus sativus", icon: "🌸", color: "#fffff0",
+                tags: [], waterFreq: 10,
+                light: "Prefers full sun in cooler climates (like Kashmir).",
+                water: "Requires dry summers. Water moderately during its autumn blooming season.",
+                toxic: true, toxicityInfo: "The saffron threads are safe in small amounts, but the plant bulb is toxic to pets."
+            },
+            {
+                id: "p116", name: "Coconut (Nariyal)", species: "Cocos nucifera", icon: "🥥", color: "#f0fff4",
+                tags: ["pet-safe"], waterFreq: 5,
+                light: "Thrives in full, direct tropical sunlight and coastal areas.",
+                water: "Requires abundant water and high humidity. Often grown near water sources.",
+                toxic: false, toxicityInfo: "Completely safe. Coconut meat and water are non-toxic."
+            },
+            {
+                id: "p117", name: "Cumin (Jeera)", species: "Cuminum cyminum", icon: "🌱", color: "#f8f9fa",
+                tags: ["beginner"], waterFreq: 7,
+                light: "Needs full sun and a long, hot summer to mature.",
+                water: "Drought-tolerant. Keep soil lightly moist until established, then water sparingly.",
+                toxic: false, toxicityInfo: "Generally safe for pets in very small, culinary amounts."
+            },
+            {
+                id: "p118", name: "Fennel (Saunf)", species: "Foeniculum vulgare", icon: "🌿", color: "#ebf8ff",
+                tags: ["pet-safe"], waterFreq: 5,
+                light: "Thrives in full sun. Needs a warm, sunny location.",
+                water: "Requires regular watering. Do not let the soil dry out excessively.",
+                toxic: false, toxicityInfo: "Completely safe and non-toxic for dogs and cats."
+            },
+            {
+                id: "p119", name: "Radish (Mooli)", species: "Raphanus sativus", icon: "🥕", color: "#fdf2f8",
+                tags: ["beginner", "pet-safe"], waterFreq: 3,
+                light: "Grows best in full sun during cool weather (winter crop).",
+                water: "Keep soil consistently moist. Dry soil makes radishes woody and overly spicy.",
+                toxic: false, toxicityInfo: "Safe and non-toxic for humans and pets."
+            },
+            {
+                id: "p120", name: "Carrot (Gajar)", species: "Daucus carota", icon: "🥕", color: "#e6fffa",
+                tags: ["beginner", "pet-safe"], waterFreq: 3,
+                light: "Prefers full sun. Soil must be loose and free of rocks for straight roots.",
+                water: "Requires consistent moisture to prevent the roots from cracking.",
+                toxic: false, toxicityInfo: "Completely safe and a healthy treat for dogs."
+            },
+            {
+                id: "p121", name: "Rubber Plant (Commercial)", species: "Hevea brasiliensis", icon: "🌳", color: "#fffff0",
+                tags: [], waterFreq: 5,
+                light: "Needs full sun and a hot, humid tropical climate (common in Kerala).",
+                water: "Requires high rainfall and well-draining soil to prevent root rot.",
+                toxic: true, toxicityInfo: "The latex sap is mildly toxic and can cause severe skin irritation and stomach upset."
+            }
+        ];
+
+        // --- UI LOGIC ---
+        const grid = document.getElementById('wikiGrid');
+        const searchInput = document.getElementById('searchInput');
+        const filterPills = document.querySelectorAll('.filter-pill');
+        const noResults = document.getElementById('no-results');
+        const modal = document.getElementById('plantModal');
+        const modalBody = document.getElementById('modalBody');
+        const closeModal = document.getElementById('closeModal');
+
+        let currentFilter = 'all';
+        let searchQuery = '';
+
+        // Render Cards
+        function renderCards() {
+            grid.innerHTML = '';
+            
+            const filteredPlants = plantDatabase.filter(plant => {
+                const matchesSearch = plant.name.toLowerCase().includes(searchQuery) || plant.species.toLowerCase().includes(searchQuery);
+                const matchesFilter = currentFilter === 'all' || plant.tags.includes(currentFilter);
+                return matchesSearch && matchesFilter;
+            });
+
+            if (filteredPlants.length === 0) {
+                noResults.style.display = 'block';
+            } else {
+                noResults.style.display = 'none';
+                filteredPlants.forEach(plant => {
+                    const card = document.createElement('div');
+                    card.className = 'wiki-card';
+                    card.onclick = () => openModal(plant);
+                    
+                    let tagsHtml = '';
+                    if (plant.tags.includes('beginner')) tagsHtml += '<span class="badge">🔰 Easy</span>';
+                    if (plant.tags.includes('low-light')) tagsHtml += '<span class="badge">🌑 Low Light</span>';
+                    if (plant.tags.includes('pet-safe')) tagsHtml += '<span class="badge">🐾 Safe</span>';
+
+                    card.innerHTML = `
+                        <div class="card-img" style="background-color: ${plant.color}">${plant.icon}</div>
+                        <div class="card-content">
+                            <div class="card-title">${plant.name}</div>
+                            <div class="card-species">${plant.species}</div>
+                            <div class="card-badges">${tagsHtml}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+        }
+
+        // Search Listener
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase();
+            renderCards();
+        });
+
+        // Filter Listener
+        filterPills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                // Update active class
+                filterPills.forEach(p => p.classList.remove('active'));
+                pill.classList.add('active');
+                
+                currentFilter = pill.dataset.filter;
+                renderCards();
+            });
+        });
+
+        // Modal Logic
+        function openModal(plant) {
+            const toxicBox = plant.toxic 
+                ? `<div class="info-section warning-box">
+                    <div class="info-title warning-title">⚠️ Toxicity Warning</div>
+                    <div class="info-text">${plant.toxicityInfo}</div>
+                   </div>`
+                : `<div class="info-section" style="background:#f0fdf4; border:1px solid #c6f6d5;">
+                    <div class="info-title" style="color:#276749;">🐾 Pet Safe</div>
+                    <div class="info-text">${plant.toxicityInfo}</div>
+                   </div>`;
+
+            modalBody.innerHTML = `
+                <div class="modal-header-icon">${plant.icon}</div>
+                <div class="modal-title">${plant.name}</div>
+                <div class="modal-species">${plant.species}</div>
+                
+                <div class="info-section">
+                    <div class="info-title">☀️ Light Requirements</div>
+                    <div class="info-text">${plant.light}</div>
+                </div>
+                
+                <div class="info-section">
+                    <div class="info-title">💧 Watering Schedule</div>
+                    <div class="info-text">${plant.water}</div>
+                </div>
+                
+                ${toxicBox}
+
+                <button class="add-garden-btn" id="addToGardenBtn">➕ Add to My Garden</button>
+            `;
+            
+            modal.style.display = 'flex';
+
+            // Attach Firebase logic to the new button inside the modal
+            document.getElementById('addToGardenBtn').onclick = () => saveToGardenDB(plant);
+        }
+
+        // Close Modal Handlers
+        closeModal.onclick = () => modal.style.display = 'none';
+        window.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; }
+
+        // --- FIREBASE: Add to 'My Garden' ---
+        async function saveToGardenDB(plant) {
+            const btn = document.getElementById('addToGardenBtn');
+            btn.innerText = "Adding...";
+            btn.disabled = true;
+
+            const gardenRef = ref(db, 'my_garden');
+            
+            try {
+                await set(push(gardenRef), {
+                    name: plant.name,
+                    species: plant.species,
+                    waterFrequencyDays: plant.waterFreq,
+                    lastWatered: Date.now()
+                });
+                
+                btn.innerText = "✅ Added successfully!";
+                btn.style.backgroundColor = "#2f855a";
+                
+                setTimeout(() => { modal.style.display = 'none'; }, 1500);
+            } catch (error) {
+                console.error("Error adding to garden:", error);
+                alert("Failed to add to garden.");
+                btn.innerText = "➕ Add to My Garden";
+                btn.disabled = false;
+            }
+        }
+
+        // Initial Render
+        renderCards();
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>My Garden - AVANA</title>
+    <style>
+        
+        /* Modern Reset and Base Styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f1;
+            color: #2d3748;
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden; 
+        }
+
+        /* --- Navigation Sidebar Styles --- */
+        .sidebar {
+            height: 100%; width: 250px; position: fixed; z-index: 1000;
+            top: 0; left: -250px; background-color: #1e3932; overflow-x: hidden;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1); padding-top: 60px;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.5);
+        }
+        .sidebar.open { left: 0; }
+        .sidebar .close-btn {
+            position: absolute; top: 10px; right: 20px; font-size: 36px;
+            color: #a0aec0; text-decoration: none; cursor: pointer;
+        }
+        .sidebar a.nav-link {
+            padding: 15px 25px; text-decoration: none; font-size: 18px;
+            color: #cbd5e0; display: block; transition: 0.2s; border-left: 4px solid transparent;
+        }
+        .sidebar a.nav-link:hover, .sidebar a.nav-link.active {
+            color: white; background-color: #2b4c44; border-left: 4px solid #48bb78; 
+        }
+        .sidebar-title {
+            color: white; padding: 0 25px 20px 25px; font-size: 22px;
+            font-weight: bold; border-bottom: 1px solid #2b4c44; margin-bottom: 10px;
+        }
+
+        /* --- Main Content Area --- */
+        .main-content {
+            transition: margin-left .3s; padding: 15px; width: 100%;
+            max-width: 900px; margin: 0 auto;
+        }
+
+        /* Header */
+        .header {
+            display: flex; align-items: center; margin-bottom: 20px;
+            background: white; padding: 15px; border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); position: sticky;
+            top: 15px; z-index: 100;
+        }
+        .menu-btn {
+            font-size: 24px; cursor: pointer; background: none; border: none;
+            color: #1e3932; margin-right: 15px; padding: 5px; 
+        }
+        .header h1 { color: #1e3932; font-size: 22px; }
+
+        /* --- Garden Specific Styles --- */
+        .add-plant-card {
+            background-color: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 25px;
+            border-top: 4px solid #48bb78;
+        }
+        .add-plant-card h2 { font-size: 18px; color: #276749; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;}
+        
+        .form-grid {
+            display: grid; grid-template-columns: 1fr; gap: 15px; margin-bottom: 15px;
+        }
+        @media(min-width: 600px) {
+            .form-grid { grid-template-columns: 1fr 1fr; }
+        }
+
+        .input-group input, .input-group select {
+            width: 100%; padding: 12px; border: 1px solid #cbd5e0;
+            border-radius: 8px; font-family: inherit; font-size: 16px; 
+            background-color: #f8fafc;
+        }
+        .input-group input:focus, .input-group select:focus {
+            outline: none; border-color: #48bb78; background-color: white;
+        }
+        
+        button.primary-btn {
+            background-color: #48bb78; color: white; border: none;
+            padding: 12px 20px; font-size: 16px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; width: 100%;
+            transition: background-color 0.3s;
+        }
+        button.primary-btn:hover { background-color: #38a169; }
+
+        /* Garden Grid */
+        .section-title { font-size: 20px; color: #1e3932; margin-bottom: 15px; padding-left: 5px; }
+        
+        .garden-grid {
+            display: grid; grid-template-columns: 1fr; gap: 15px;
+        }
+        @media(min-width: 600px) {
+            .garden-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); }
+        }
+
+        .plant-card {
+            background-color: white; padding: 20px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04); position: relative;
+            border: 1px solid #e2e8f0;
+            display: flex; flex-direction: column;
+        }
+        .plant-icon {
+            font-size: 40px; text-align: center; margin-bottom: 10px;
+            background: #f0fdf4; border-radius: 50%; width: 70px; height: 70px;
+            line-height: 70px; margin: 0 auto 15px auto;
+        }
+        .plant-name { font-size: 18px; font-weight: bold; color: #2d3748; text-align: center; }
+        .plant-species { font-size: 14px; color: #718096; text-align: center; margin-bottom: 15px; font-style: italic;}
+        
+        .plant-stats {
+            background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 15px;
+            font-size: 14px; color: #4a5568;
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .stat-row:last-child { margin-bottom: 0; }
+        .stat-value { font-weight: bold; color: #2c7a7b; }
+        
+        .plant-actions { display: flex; gap: 10px; margin-top: auto; }
+        
+        .water-btn {
+            background-color: #3182ce; color: white; border: none; padding: 10px;
+            border-radius: 8px; cursor: pointer; flex: 1; font-weight: bold;
+        }
+        .water-btn:hover { background-color: #2b6cb0; }
+        
+        .delete-btn {
+            background-color: #fff5f5; color: #e53e3e; border: 1px solid #feb2b2;
+            padding: 10px; border-radius: 8px; cursor: pointer;
+        }
+        .delete-btn:hover { background-color: #fed7d7; }
+
+        #loading-garden { text-align: center; color: #718096; padding: 20px; }
+        .empty-state { text-align: center; color: #a0aec0; padding: 40px 20px; background: white; border-radius: 12px; border: 2px dashed #cbd5e0;}
+/* --- AVANA Loading Screen --- */
+        #avana-loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #f0f4f1; /* Matches your app's soothing background */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Keeps it on top of everything */
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+        }
+
+        .loader-content {
+            text-align: center;
+            transform: translateY(20px);
+            opacity: 0;
+            animation: floatUp 0.6s ease-out forwards;
+        }
+
+        .loader-logo {
+            font-size: 42px;
+            font-weight: 900;
+            color: #1e3932;
+            letter-spacing: 4px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .loader-leaf {
+            display: inline-block;
+            animation: pulseLeaf 1.5s infinite ease-in-out;
+        }
+
+        .loader-tagline {
+            font-size: 16px;
+            color: #2c7a7b;
+            font-style: italic;
+            opacity: 0;
+            animation: fadeInText 0.8s ease-out 0.4s forwards; /* Slight delay for effect */
+        }
+
+        /* Animation Keyframes */
+        @keyframes floatUp {
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeInText {
+            to { opacity: 1; }
+        }
+        @keyframes pulseLeaf {
+            0% { transform: scale(1) rotate(0deg); }
+            50% { transform: scale(1.15) rotate(5deg); }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+    </style>
+</head>
+<body>
+<div id="avana-loader">
+        <div class="loader-content">
+            <div class="loader-logo"><span class="loader-leaf">🌿</span> AVANA</div>
+            <div class="loader-tagline">Cultivating Life, Powered by AI</div>
+        </div>
+    </div>
+    <script>
+        // Remove the loading screen smoothly after 1.5 seconds
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('avana-loader');
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+            }, 1500); // 1500 milliseconds = 1.5 seconds
+        });
+    </script>
+    <div id="mySidebar" class="sidebar">
+        <a class="close-btn" onclick="toggleNav()">×</a>
+        <div class="sidebar-title">🌿 Plant Doctor</div>
+        <a href="index.html" class="nav-link">🔍 Diagnose</a>
+        <a href="garden.html" class="nav-link active">🪴 My Garden</a>
+        <a href="diseases.html" class="nav-link">📖 Disease Guide</a>
+        <a href="wiki.html" class="nav-link">📚 Plant Search</a>
+        <a href="community.html" class="nav-link">💬 Community</a>
+    </div>
+
+    <div id="main" class="main-content">
+        
+        <div class="header">
+            <button class="menu-btn" onclick="toggleNav()">☰</button>
+            <h1>🌿AVANA My Garden</h1>
+        </div>
+
+        <div class="add-plant-card">
+            <h2>🌱 Add a New Plant</h2>
+            <div class="form-grid">
+                <div class="input-group">
+                    <input type="text" id="plantName" placeholder="Nickname (e.g., Fernie)" maxlength="30">
+                </div>
+                <div class="input-group">
+                    <input type="text" id="plantSpecies" placeholder="Species (e.g., Monstera)" maxlength="40">
+                </div>
+                <div class="input-group">
+                    <select id="waterFrequency">
+                        <option value="" disabled selected>Watering Frequency...</option>
+                        <option value="1">Every Day</option>
+                        <option value="3">Every 3 Days</option>
+                        <option value="7">Once a Week</option>
+                        <option value="14">Every 2 Weeks</option>
+                        <option value="30">Once a Month</option>
+                    </select>
+                </div>
+            </div>
+            <button id="addPlantBtn" class="primary-btn">➕ Add to My Garden</button>
+        </div>
+
+        <h2 class="section-title">Your Plants</h2>
+        <div id="loading-garden">Loading your garden...</div>
+        <div id="garden-container" class="garden-grid">
+            </div>
+
+    </div>
+
+    <script>
+        function toggleNav() {
+            const sidebar = document.getElementById("mySidebar");
+            if (sidebar.style.left === "0px") {
+                sidebar.style.left = "-250px";
+            } else {
+                sidebar.style.left = "0px";
+            }
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { 
+            getDatabase, ref, push, set, onValue, update, remove 
+        } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+        // Using your original database URL
+        const firebaseConfig = {
+            apiKey: "AIzaSyDiRJsLgqIs_YHpNjbgq1PZ6Oes1_A-uqM",
+            authDomain: "plantcommunity-60a9a.firebaseapp.com",
+            databaseURL: "https://plantcommunity-60a9a-default-rtdb.firebaseio.com", 
+            projectId: "plantcommunity-60a9a",
+            storageBucket: "plantcommunity-60a9a.firebasestorage.app",
+            messagingSenderId: "1094686459183",
+            appId: "1:1094686459183:web:0d5f459afbd62ff5e4cdda"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // UI Elements
+        const addBtn = document.getElementById('addPlantBtn');
+        const nameInput = document.getElementById('plantName');
+        const speciesInput = document.getElementById('plantSpecies');
+        const freqInput = document.getElementById('waterFrequency');
+        const container = document.getElementById('garden-container');
+        const loadingText = document.getElementById('loading-garden');
+
+        // Reference to the 'my_garden' node in Realtime DB
+        const gardenRef = ref(db, 'my_garden');
+
+        // Add Plant
+        addBtn.addEventListener('click', async () => {
+            const name = nameInput.value.trim();
+            const species = speciesInput.value.trim() || "Unknown Plant";
+            const freq = freqInput.value;
+
+            if (!name || !freq) {
+                alert("Please give your plant a nickname and select a watering frequency!");
+                return;
+            }
+
+            addBtn.disabled = true; addBtn.innerText = "Adding...";
+
+            try {
+                const newPlantRef = push(gardenRef);
+                await set(newPlantRef, {
+                    name: name,
+                    species: species,
+                    waterFrequencyDays: parseInt(freq),
+                    lastWatered: Date.now() // Save current time in milliseconds
+                });
+
+                // Clear form
+                nameInput.value = "";
+                speciesInput.value = "";
+                freqInput.value = "";
+            } catch (error) {
+                console.error("Error adding plant:", error);
+                alert("Failed to add plant. Check database connection.");
+            } finally {
+                addBtn.disabled = false; addBtn.innerText = "➕ Add to My Garden";
+            }
+        });
+
+        // Render Garden
+        onValue(gardenRef, (snapshot) => {
+            loadingText.style.display = "none";
+            container.innerHTML = ""; 
+
+            const data = snapshot.val();
+
+            if (!data) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 40px; margin-bottom: 10px;">🌵</div>
+                        <h3>Your garden is empty</h3>
+                        <p>Add your first plant above to start tracking!</p>
+                    </div>`;
+                container.style.display = "block"; // override grid for empty state
+                return;
+            }
+
+            container.style.display = "grid"; // restore grid
+
+            for (let id in data) {
+                const plant = data[id];
+                
+                // Calculate days since last watered
+                const lastWateredDate = new Date(plant.lastWatered);
+                const today = new Date();
+                
+                // Set both dates to midnight to accurately count calendar days
+                today.setHours(0, 0, 0, 0);
+                lastWateredDate.setHours(0, 0, 0, 0);
+
+                const diffTime = Math.abs(today - lastWateredDate);
+                const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                
+                // Determine status text
+                let statusText = `${diffDays} days ago`;
+                let statusColor = "#2c7a7b";
+                
+                if (diffDays === 0) statusText = "Today";
+                if (diffDays > plant.waterFrequencyDays) {
+                    statusText = "Needs Water! 🚨";
+                    statusColor = "#e53e3e";
+                }
+
+                const card = document.createElement('div');
+                card.className = 'plant-card';
+                card.innerHTML = `
+                    <div class="plant-icon">🪴</div>
+                    <div class="plant-name">${escapeHTML(plant.name)}</div>
+                    <div class="plant-species">${escapeHTML(plant.species)}</div>
+                    
+                    <div class="plant-stats">
+                        <div class="stat-row">
+                            <span>Schedule:</span>
+                            <span class="stat-value">Every ${plant.waterFrequencyDays} days</span>
+                        </div>
+                        <div class="stat-row">
+                            <span>Last Watered:</span>
+                            <span class="stat-value" style="color: ${statusColor}">${statusText}</span>
+                        </div>
+                    </div>
+
+                    <div class="plant-actions">
+                        <button class="water-btn" data-id="${id}">💧 Water</button>
+                        <button class="delete-btn" data-id="${id}">🗑️</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            }
+        });
+
+        // Handle Clicks for Water and Delete (Event Delegation)
+        container.addEventListener('click', async (e) => {
+            
+            // 1. Water Plant Button
+            const waterBtn = e.target.closest('.water-btn');
+            if (waterBtn) {
+                const plantId = waterBtn.dataset.id;
+                const plantRef = ref(db, `my_garden/${plantId}`);
+                
+                // Update the lastWatered timestamp to right now
+                try {
+                    await update(plantRef, { lastWatered: Date.now() });
+                } catch (error) {
+                    console.error("Error watering plant:", error);
+                }
+            }
+
+            // 2. Delete Plant Button
+            const deleteBtn = e.target.closest('.delete-btn');
+            if (deleteBtn) {
+                // Add a confirmation so people don't accidentally delete their favorite fern
+                if (confirm("Are you sure you want to remove this plant from your garden?")) {
+                    const plantId = deleteBtn.dataset.id;
+                    const plantRef = ref(db, `my_garden/${plantId}`);
+                    
+                    try {
+                        await remove(plantRef);
+                    } catch (error) {
+                        console.error("Error deleting plant:", error);
+                    }
+                }
+            }
+        });
+
+        // Helper function to prevent XSS formatting issues
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+        // --- NOTIFICATION SYSTEM ---
+        
+        // 1. Ask the user for permission when they open the Garden page
+        document.addEventListener('DOMContentLoaded', () => {
+            if ("Notification" in window) {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        console.log("Notification permission granted.");
+                    }
+                });
+            }
+        });
+
+        // 2. A function to trigger the notification
+        function sendWaterReminder(plantName) {
+            if ("Notification" in window && Notification.permission === "granted") {
+                // Check if we already reminded them recently so we don't spam them
+                const lastNotified = localStorage.getItem('notified_' + plantName);
+                const todayString = new Date().toDateString();
+
+                if (lastNotified !== todayString) {
+                    new Notification("💧 Plant Doctor Reminder", {
+                        body: `Your plant ${plantName} needs water today!`,
+                        icon: "https://cdn-icons-png.flaticon.com/512/628/628283.png" // Placeholder leaf icon
+                    });
+                    
+                    // Save that we reminded them today
+                    localStorage.setItem('notified_' + plantName, todayString);
+                }
+            }
+        }
+    </script>
+</body>
+</html>
