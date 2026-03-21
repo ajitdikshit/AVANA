@@ -1,13 +1,13 @@
-const CACHE_NAME = 'avana-cache-v1';
+const CACHE_NAME = 'avana-cache-v3'; // Changed to v3 to force an update!
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/garden.html',
-  '/community.html',
-  '/wiki.html',
-  '/diseases.html',
-  '/icon-192.png',
-  '/icon-512.png'
+  './',
+  './index.html',
+  './garden.html',
+  './community.html',
+  './wiki.html',
+  './diseases.html',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Install the Service Worker and Cache Files
