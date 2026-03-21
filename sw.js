@@ -1,40 +1,60 @@
-const CACHE_NAME = 'avana-core-v4';
+const CACHE_NAME = "avana-cache-v1";
 
-// 1. Pass the Chrome Offline Test by caching ONLY the absolute essentials
-self.addEventListener('install', event => {
-  self.skipWaiting();
+// List of local files to cache (Using strict GitHub Pages paths)
+const FILES_TO_CACHE = [
+  "/AVANA/",
+  "/AVANA/index.html",
+  "/AVANA/garden.html",
+  "/AVANA/community.html",
+  "/AVANA/wiki.html",
+  "/AVANA/diseases.html",
+  "/AVANA/icon-192.png",
+  "/AVANA/icon-512.png"
+];
+
+// Install service worker
+self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll([
-        '/AVANA/',
-        '/AVANA/index.html',
-        '/AVANA/icon-192.png',
-        '/AVANA/icon-512.png'
-      ]);
-    }).catch(err => console.log('Offline test cache failed, but continuing.', err))
+      console.log("[SW] Caching app shell");
+      return cache.addAll(FILES_TO_CACHE);
+    })
   );
+  self.skipWaiting();
 });
 
-self.addEventListener('activate', event => {
-  event.waitUntil(clients.claim());
-});
-
-// 2. "Lazy Load" everything else so we never get missing file errors
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request).then(cachedResponse => {
-      // If we already saved it, return it immediately!
-      if (cachedResponse) return cachedResponse;
-      
-      // Otherwise, fetch it from the internet and save it for next time
-      return fetch(event.request).then(networkResponse => {
-        return caches.open(CACHE_NAME).then(cache => {
-          // Only cache our own files, not external API calls (like Hugging Face)
-          if (event.request.url.startsWith(self.location.origin)) {
-             cache.put(event.request, networkResponse.clone());
+// Activate service worker and clean old caches
+self.addEventListener("activate", event => {
+  event.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.map(key => {
+          if (key !== CACHE_NAME) {
+            console.log("[SW] Deleting old cache:", key);
+            return caches.delete(key);
           }
-          return networkResponse;
-        });
+        })
+      )
+    )
+  );
+  self.clients.claim();
+});
+
+// Fetch handler
+self.addEventListener("fetch", event => {
+  // We don't want to cache Firebase database calls, so we skip them
+  if (event.request.url.includes("firebasedatabase.app") || event.request.url.includes("firebaseio.com")) {
+      return; 
+  }
+
+  // Cache-first for local app files
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      return response || fetch(event.request).catch(() => {
+        // Offline fallback
+        if (event.request.mode === "navigate") {
+          return caches.match("/AVANA/index.html");
+        }
       });
     })
   );
